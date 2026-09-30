@@ -1,0 +1,19 @@
+{
+  "dir": "../..",
+  "mode": "auto",
+  "parallel": 2,
+  "max_turns": 10,
+  "timeout": "10m",
+  "gate": ["grep -qx 'hrn rocks' greeting.txt"],
+  "matrix": [
+    {"name": "claude-sonnet", "backend": "claude", "model": "sonnet"},
+    {"name": "codex", "backend": "codex"}
+  ],
+  "repeats": 1,
+  "tasks": [
+    {
+      "id": "greeting",
+      "prompt": "Create a file named greeting.txt in the repository root. It must contain exactly one line, the text between the backticks and nothing else: `hrn rocks` Do not run git."
+    }
+  ]
+}

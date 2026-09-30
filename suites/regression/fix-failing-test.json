@@ -1,0 +1,22 @@
+{
+  "dir": "../..",
+  "mode": "yolo",
+  "parallel": 2,
+  "max_turns": 20,
+  "timeout": "15m",
+  "gate": [
+    "go test ./fixtures/buggy/",
+    "git diff --quiet HEAD -- fixtures/buggy/sum_test.go || { echo 'the test file was changed'; exit 1; }"
+  ],
+  "matrix": [
+    {"name": "claude-sonnet", "backend": "claude", "model": "sonnet"},
+    {"name": "codex", "backend": "codex"}
+  ],
+  "repeats": 1,
+  "tasks": [
+    {
+      "id": "fix-sum",
+      "prompt": "The test in fixtures/buggy fails. Fix the code so that `go test ./fixtures/buggy/` passes. Do not change fixtures/buggy/sum_test.go. Do not run git."
+    }
+  ]
+}
