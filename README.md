@@ -10,7 +10,7 @@ regression gets caught instead of noticed later.
 
 | Path | What it holds |
 |---|---|
-| `suites/golden/` | Unambiguous tasks with a known right answer. A failure here is a regression. |
+| `suites/golden/` | Unambiguous tasks with a known right answer. A failure here is a regression. `gobench.json` holds four Go tasks (memoized Fibonacci, a REST handler, a unit test, a short explanation), taken from the prompts of the 2025 `llm-agent-benchmark` and given gates. |
 | `suites/regression/` | Tasks that once went wrong, kept so they stay fixed. |
 | `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. |
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
@@ -35,13 +35,22 @@ another backend or model.
 
 ## Adding a suite
 
-1. Put what the task needs under `fixtures/<name>/` and commit it.
+1. Put what the task needs under `fixtures/<name>/` and commit it. A check the agent should
+   not write to its own taste goes in as `*.go.txt` (see `fixtures/gobench/checks/`), which
+   the gate copies into place after the agent finishes and which a gate verifies was not
+   changed. The agent can still read it; the gate only stops it from editing it. Write such a
+   test as an external `_test` package, so its names cannot collide with the agent's code.
 2. Write `suites/<kind>/<name>.json`. Keep `"dir": "../.."` so the agents and the gates run
    at the repository root, and end every prompt with "Do not run git": the harness commits
    whatever the agent leaves.
 3. Make every gate print why it failed (`|| { echo '...'; exit 1; }`); that text is what a
    diff and a retry show.
-4. Run it once on each variant before committing it, and write down the result in the PR.
+4. Check every gate both ways: it must pass a correct solution and fail a plausible wrong
+   one. A gate that cannot fail measures nothing. For a task that asks for tests, mutation
+   testing works well: break the code under test in two different ways and require the
+   agent's tests to fail on both (`gobench`'s `go-unit-test-add`). Gates run in Git Bash on
+   Windows, where there is no gcc, so `go test -race` is not available to them.
+5. Run it once on each variant before committing it, and write down the result in the PR.
 
 ## Scheduling
 
