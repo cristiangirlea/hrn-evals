@@ -1,0 +1,105 @@
+package items_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/gobench/items"
+)
+
+// Copied into place by the go-rest-items gate; the contract is the task's prompt. An external test
+// package, so its names cannot collide with the agent's.
+
+type item struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+func do(t *testing.T, h http.Handler, method, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, "/items", strings.NewReader(body))
+	if body != "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestEmptyListIsArray(t *testing.T) {
+	rec := do(t, items.NewHandler(), http.MethodGet, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET status = %d, want 200", rec.Code)
+	}
+	if got := strings.TrimSpace(rec.Body.String()); got != "[]" {
+		t.Fatalf("GET body = %q, want []", got)
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Fatalf("Content-Type = %q, want application/json", ct)
+	}
+}
+
+func TestCreateAndList(t *testing.T) {
+	h := items.NewHandler()
+	for i, name := range []string{"first", "second"} {
+		rec := do(t, h, http.MethodPost, `{"name":"`+name+`"}`)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("POST status = %d, want 201", rec.Code)
+		}
+		var got item
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("POST body %q: %v", rec.Body.String(), err)
+		}
+		if got.ID != i+1 || got.Name != name {
+			t.Fatalf("POST returned %+v, want id %d name %q", got, i+1, name)
+		}
+	}
+	rec := do(t, h, http.MethodGet, "")
+	var list []item
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatalf("GET body %q: %v", rec.Body.String(), err)
+	}
+	if len(list) != 2 || list[0].Name != "first" || list[1].ID != 2 {
+		t.Fatalf("GET returned %+v, want the two items in creation order", list)
+	}
+}
+
+func TestBadRequests(t *testing.T) {
+	h := items.NewHandler()
+	for _, body := range []string{`{not json`, `{"name":""}`} {
+		if rec := do(t, h, http.MethodPost, body); rec.Code != http.StatusBadRequest {
+			t.Errorf("POST %s status = %d, want 400", body, rec.Code)
+		}
+	}
+	for _, m := range []string{http.MethodDelete, http.MethodPut, http.MethodPatch} {
+		if rec := do(t, h, m, ""); rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s status = %d, want 405", m, rec.Code)
+		}
+	}
+}
+
+func TestConcurrentCreates(t *testing.T) {
+	h := items.NewHandler()
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			do(t, h, http.MethodPost, `{"name":"x"}`)
+		}()
+	}
+	wg.Wait()
+	var list []item
+	json.Unmarshal(do(t, h, http.MethodGet, "").Body.Bytes(), &list)
+	seen := map[int]bool{}
+	for _, it := range list {
+		seen[it.ID] = true
+	}
+	if len(list) != 50 || len(seen) != 50 {
+		t.Fatalf("after 50 concurrent creates: %d items, %d distinct ids, want 50 and 50", len(list), len(seen))
+	}
+}
