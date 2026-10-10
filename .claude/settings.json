@@ -81,7 +81,6 @@
       "mcp__hrn__batch"
     ],
     "deny": [
-      "Bash(gh pr merge *)",
       "Bash(git push --force *)",
       "Bash(git push -f *)",
       "Bash(hrn batch merge *)",
@@ -90,7 +89,6 @@
       "Read(**/.env.*)",
       "Read(**/*.key)",
       "Read(**/*.pem)",
-      "Bash(gh pr merge)",
       "Bash(gh api *-X PUT*)",
       "Bash(gh api *--method PUT*)",
       "Bash(gh api *-XPUT*)",
@@ -104,12 +102,10 @@
       "Bash(git push *refs/tags/*)",
       "Bash(git push *--mirror*)",
       "Bash(git push *--delete*)",
-      "PowerShell(gh pr merge *)",
       "PowerShell(git push --force *)",
       "PowerShell(git push -f *)",
       "PowerShell(hrn batch merge *)",
       "PowerShell(hrn runs prune *)",
-      "PowerShell(gh pr merge)",
       "PowerShell(gh api *-X PUT*)",
       "PowerShell(gh api *--method PUT*)",
       "PowerShell(gh api *-XPUT*)",
@@ -123,7 +119,11 @@
       "PowerShell(git push *refs/tags/*)",
       "PowerShell(git push *--mirror*)",
       "PowerShell(git push *--delete*)",
-      "mcp__hrn__batch_merge"
+      "mcp__hrn__batch_merge",
+      "Bash(gh pr merge *--auto*)",
+      "Bash(gh pr merge *--admin*)",
+      "PowerShell(gh pr merge *--auto*)",
+      "PowerShell(gh pr merge *--admin*)"
     ]
   }
 }

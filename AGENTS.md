@@ -60,8 +60,15 @@ both ways (README, "Adding a suite", step 4); the run of each variant is the own
 
 ## Working rules
 
-- One branch per change, one PR; **the owner merges**. Never `gh pr merge`, never push to
-  `main`, never tag or release: hand the owner the command.
+- One branch per change, one PR. **Everything is tested before a merge**: the full local checks
+  (`/check`; there is no CI here) and tests for every behaviour the change adds or alters, short
+  of starting an eval. Only then may an agent merge its PR, and only through the PR
+  (`gh pr merge <n> --merge --delete-branch --match-head-commit <sha>`), when an independent
+  review ran and its findings are fixed, a security read of the diff has nothing open, and the
+  head being merged is the commit all of that ran on. What could not be tested (a suite's gates
+  checked both ways, a run on each variant) is said in the PR and waits for the owner. Never
+  auto-merge (`--auto`) or `--admin`, never push to `main`, never tag or release: hand the owner
+  the command.
 - Commit messages and PR text are plain sentences, an area first when it helps (`golden: ...`,
   `README: ...`). No conventional-commit prefixes, no emoji, no AI attribution lines.
 - Secrets are never read, printed or committed.

@@ -24,4 +24,5 @@ Do not run `go test ./...`: `fixtures/buggy` fails on purpose. Do not run `hrn e
 
 Report one line per step (pass, or the failure's message). If a suite's gates changed, say that
 they still need checking both ways (README, "Adding a suite", step 4) and a run on each variant
-by the owner. Never merge, never push to `main`.
+by the owner. Never push to `main`. This skill does not merge: merging is through the PR, under
+AGENTS.md's conditions.
