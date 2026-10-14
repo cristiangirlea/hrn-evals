@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"html"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,16 +15,21 @@ import (
 )
 
 type evalRecord struct {
-	ID      string    `json:"id"`
-	BatchID string    `json:"batch_id"`
-	Started time.Time `json:"started"`
-	Spec    struct {
-		Name string `json:"name"`
-	} `json:"spec"`
-	Table struct {
+	ID         string    `json:"id"`
+	BatchID    string    `json:"batch_id"`
+	Started    time.Time `json:"started"`
+	Spec       evalSpec  `json:"spec"`
+	SuiteLabel string    `json:"-"`
+	Table      struct {
 		Variants []variant    `json:"variants"`
 		Tasks    []taskResult `json:"tasks"`
 	} `json:"table"`
+}
+
+type evalSpec struct {
+	Tasks []struct {
+		ID string `json:"id"`
+	} `json:"tasks"`
 }
 
 type variant struct {
@@ -90,10 +96,52 @@ func cell(s string) string {
 	return s
 }
 func (e evalRecord) suite() string {
-	if e.Spec.Name != "" {
-		return e.Spec.Name
+	ids := make([]string, 0, len(e.Spec.Tasks))
+	seen := make(map[string]bool)
+	for _, task := range e.Spec.Tasks {
+		if !seen[task.ID] {
+			ids = append(ids, task.ID)
+			seen[task.ID] = true
+		}
 	}
-	return e.ID
+	sort.Strings(ids)
+	return strings.Join(ids, ", ")
+}
+
+func (e evalRecord) suiteLabel() string {
+	if e.SuiteLabel != "" {
+		return e.SuiteLabel
+	}
+	return e.suite()
+}
+
+func suiteLabels() (map[string]string, error) {
+	labels := make(map[string]string)
+	err := filepath.WalkDir("suites", func(path string, entry fs.DirEntry, err error) error {
+		if os.IsNotExist(err) && path == "suites" {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".json" {
+			return nil
+		}
+		var spec evalSpec
+		if err := readJSON(path, &spec); err != nil {
+			return err
+		}
+		key := (evalRecord{Spec: spec}).suite()
+		label, err := filepath.Rel("suites", path)
+		if err != nil {
+			return err
+		}
+		if _, exists := labels[key]; !exists {
+			labels[key] = strings.TrimSuffix(filepath.ToSlash(label), ".json")
+		}
+		return nil
+	})
+	return labels, err
 }
 
 func readJSON(path string, v any) error {
@@ -165,6 +213,10 @@ func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 }
 
 func generate(home, out, command string) error {
+	labels, err := suiteLabels()
+	if err != nil {
+		return err
+	}
 	entries, err := os.ReadDir(filepath.Join(home, "evals"))
 	if err != nil {
 		return err
@@ -181,6 +233,7 @@ func generate(home, out, command string) error {
 			skipped++
 			continue
 		}
+		e.SuiteLabel = labels[e.suite()]
 		evals = append(evals, e)
 		if e.Started.After(latest) {
 			latest = e.Started
@@ -205,7 +258,7 @@ func generate(home, out, command string) error {
 		date = latest.UTC().Format("2006-01-02")
 	}
 	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d.\n\n", date, cell(command), len(evals), skipped)
-	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Unnamed specs use their eval ID as the suite. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
+	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Suites are identified by their sorted task ID set and labelled by the matching file under suites/, falling back to joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
 		t taskResult
@@ -236,7 +289,7 @@ func generate(home, out, command string) error {
 		if f.e.suite() != suite {
 			suite = f.e.suite()
 			variantName = ""
-			fmt.Fprintf(&page, "\n### %s\n", cell(suite))
+			fmt.Fprintf(&page, "\n### %s\n", cell(f.e.suiteLabel()))
 		}
 		if f.t.Variant != variantName {
 			variantName = f.t.Variant
@@ -297,7 +350,7 @@ func writeComparisons(page *strings.Builder, evals []evalRecord) {
 							reasons = append(reasons, "higher median cost")
 						}
 						if len(reasons) > 0 {
-							rows = append(rows, comparison{e.suite(), ta.Task, e.ID, a, b, ta, tb, strings.Join(reasons, "; ")})
+							rows = append(rows, comparison{e.suiteLabel(), ta.Task, e.ID, a, b, ta, tb, strings.Join(reasons, "; ")})
 						}
 					}
 				}
