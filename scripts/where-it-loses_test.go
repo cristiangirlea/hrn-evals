@@ -119,6 +119,49 @@ func TestNoGateRan(t *testing.T) {
 	}
 }
 
+func TestKilledGate(t *testing.T) {
+	home := t.TempDir()
+	if err := os.Mkdir(filepath.Join(home, "batches"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "batches", "batch.json"), []byte(`{"tasks":[{"id":"eval.task.small.r1","attempts":[{"gates":[{"command":"killed-check","exit_code":-1,"output":"killed"}]}]}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if got := gateMessage(home, evalRecord{ID: "eval", BatchID: "batch"}, taskResult{Task: "task", Variant: "small"}); got != "<code>killed-check</code><br>killed" {
+		t.Errorf("killed gate = %q", got)
+	}
+}
+
+func TestCellEscapes(t *testing.T) {
+	for _, tc := range []struct{ name, input, want string }{
+		{"lone carriage return", "a\rb", "ab"},
+		{"asterisk", "*", "&#42;"},
+		{"underscore", "_", "&#95;"},
+		{"backtick", "`", "&#96;"},
+		{"backslash", "\\", "&#92;"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cell(tc.input); got != tc.want {
+				t.Errorf("cell = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestComparisonRequiresSharedTask(t *testing.T) {
+	var e evalRecord
+	e.Table.Variants = []variant{{Name: "small", Cost: 1, MedianCost: 3}, {Name: "large", Cost: 2, MedianCost: 1}}
+	e.Table.Tasks = []taskResult{{Task: "only-small", Variant: "small", Total: 1}, {Task: "only-large", Variant: "large", Passed: 1, Total: 1}}
+	var page strings.Builder
+	writeComparisons(&page, []evalRecord{e})
+	if strings.Contains(page.String(), "| Suite |") || strings.Contains(page.String(), "only-small") || strings.Contains(page.String(), "only-large") {
+		t.Errorf("comparison row for unshared tasks:\n%s", page.String())
+	}
+	if !strings.Contains(page.String(), "No cheaper-variant losses") {
+		t.Error("missing empty comparisons note")
+	}
+}
+
 func TestCheaper(t *testing.T) {
 	for _, tc := range []struct {
 		name string
