@@ -58,6 +58,9 @@ both ways (README, "Adding a suite", step 4); the run of each variant is the own
 - Gates run in Git Bash on Windows with no gcc (no `go test -race`), and must print why they failed.
 - A suite's matrix compares the two agents in daily use (`claude` with Sonnet, `codex`); ask
   before adding a variant that bills per token (`api` backend) or a `judge`.
+  A `suites/routing/` suite compares backends, models and efforts instead, so that
+  `hrn route from-eval` can build the routing table; a variant whose plan limit hrn remembers
+  (`~/.hrn/limits.json`) is left out of a run, and the results page says so.
 
 ## Working rules
 
