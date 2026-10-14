@@ -16,6 +16,7 @@ regression gets caught instead of noticed later.
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
 | `scripts/run-all.sh` | Runs every suite, or the ones named, then lists the saved evals. |
 | `results/` | The results pages. Every page from now on meets [the publication gate](docs/publication-gate.md), the rule for when a saving or quality claim may be made. |
+| `results/where-it-loses.md` | The standing page of where each backend and model loses, regenerated from the saved evals by `scripts/where-it-loses.sh`; failures stay when a later run passes, with a note. |
 
 This repository is its own sandbox: each task runs in a git worktree of it on a branch of
 its own, and the worktrees are removed when the eval ends. `fixtures/buggy` has a failing
