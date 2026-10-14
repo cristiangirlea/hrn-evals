@@ -15,6 +15,7 @@ regression gets caught instead of noticed later.
 | `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. |
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
 | `scripts/run-all.sh` | Runs every suite, or the ones named, then lists the saved evals. |
+| `results/` | The results pages. Every page from now on meets [the publication gate](docs/publication-gate.md), the rule for when a saving or quality claim may be made. |
 
 This repository is its own sandbox: each task runs in a git worktree of it on a branch of
 its own, and the worktrees are removed when the eval ends. `fixtures/buggy` has a failing

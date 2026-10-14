@@ -15,6 +15,33 @@ if [ ${#suites[@]} -eq 0 ]; then
 	suites=(suites/*/*.json)
 fi
 
+echo "pins:"
+echo "hrn version:"
+hrn version
+for backend in claude codex; do
+	if command -v "$backend" >/dev/null 2>&1; then
+		echo "$backend version:"
+		"$backend" --version || echo "$backend: version unavailable"
+	else
+		echo "$backend: (not installed)"
+	fi
+done
+echo "suite commit: $(git rev-parse HEAD)"
+echo "model ids: eval specs save the Claude alias sonnet and no Codex model; the resolved Claude id is in the batch record's attempt result; Codex records no model id"
+echo "fixture SHA-256 hashes:"
+if command -v sha256sum >/dev/null 2>&1; then
+	hash=(sha256sum)
+elif command -v shasum >/dev/null 2>&1; then
+	hash=(shasum -a 256)
+else
+	echo "run-all: sha256sum or shasum is required for fixture pins" >&2
+	exit 1
+fi
+while IFS= read -r -d '' fixture; do
+	read -r sum _ < <("${hash[@]}" "$fixture")
+	printf '%s  %s\n' "$sum" "$fixture"
+done < <(find fixtures/ -type f -print0 | LC_ALL=C sort -z)
+
 failed=0
 for s in "${suites[@]}"; do
 	echo "=== $s"
