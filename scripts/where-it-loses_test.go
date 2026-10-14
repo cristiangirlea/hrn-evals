@@ -69,7 +69,7 @@ func TestGenerate(t *testing.T) {
 		"Date: 2026-10-03", "Evals read: 2. Unreadable or invalid evals skipped: 2.",
 		"### broken", "#### small", "| broken | 1/2 (1 failed) | z-old |",
 		"<code>check &#124; verify &lt;safe&gt;</code><br>last one<br>last two &#124; &lt;tag&gt;<br>last three",
-		"fixed in eval a-new", "| missing | 0/2 (2 failed) | z-old | (gate output not kept) |",
+		"fixed in eval a-new", "| missing | 0/2 (2 failed) | z-old | (attempt not found) |",
 		"| exit-status | 0/1 (1 failed) | z-old | <code>exit-check</code><br>exit gate failed |",
 		"| broken | small / large | broken | z-old | 1/2 / 2/2 | 1 (estimate) / 2 |",
 		"fewer passes; higher median cost",
@@ -96,6 +96,26 @@ func TestGenerate(t *testing.T) {
 	}
 	if string(first) != string(second) {
 		t.Error("second generation changed the page")
+	}
+}
+
+func TestNoGateRan(t *testing.T) {
+	home := t.TempDir()
+	if err := os.Mkdir(filepath.Join(home, "batches"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(home, "batches", "batch.json")
+	if err := os.WriteFile(path, []byte(`{"tasks":[{"id":"eval.task.small.r1","attempts":[{"result":{"status":"ok"},"gates":[{"ok":true}]}]},{"id":"eval.task.small.r2","attempts":[{"result":{"status":"timeout"},"gates":[]}]}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	e := evalRecord{ID: "eval", BatchID: "batch"}
+	task := taskResult{Task: "task", Variant: "small"}
+	if got := gateMessage(home, e, task); got != "(no gate ran: timeout)" {
+		t.Errorf("gateMessage = %q", got)
+	}
+	e.BatchID = "missing"
+	if got := gateMessage(home, e, task); got != "(gate output not kept)" {
+		t.Errorf("missing batch = %q", got)
 	}
 }
 

@@ -51,6 +51,9 @@ type batchRecord struct {
 	Tasks []struct {
 		ID       string `json:"id"`
 		Attempts []struct {
+			Result struct {
+				Status string `json:"status"`
+			} `json:"result"`
 			Gates []struct {
 				Command  string `json:"command"`
 				OK       *bool  `json:"ok"`
@@ -154,13 +157,20 @@ func readJSON(path string, v any) error {
 
 func gateMessage(home string, e evalRecord, t taskResult) string {
 	// Batch IDs are identifiers, never paths outside the batches directory.
-	if e.BatchID == "" || strings.ContainsAny(e.BatchID, "/\\") {
+	if e.BatchID == "" {
 		return "(gate output not kept)"
+	}
+	if strings.ContainsAny(e.BatchID, "/\\") {
+		return "(invalid batch id)"
 	}
 	var b batchRecord
-	if readJSON(filepath.Join(home, "batches", e.BatchID+".json"), &b) != nil {
-		return "(gate output not kept)"
+	if err := readJSON(filepath.Join(home, "batches", e.BatchID+".json"), &b); err != nil {
+		if os.IsNotExist(err) {
+			return "(gate output not kept)"
+		}
+		return "(batch unreadable)"
 	}
+	noGate := ""
 	prefix := e.ID + "." + t.Task + "." + t.Variant + ".r"
 	for _, bt := range b.Tasks {
 		if !strings.HasPrefix(bt.ID, prefix) {
@@ -170,6 +180,13 @@ func gateMessage(home string, e evalRecord, t taskResult) string {
 			continue
 		}
 		for _, attempt := range bt.Attempts {
+			if noGate == "" && len(attempt.Gates) == 0 {
+				status := "unknown"
+				if words := strings.Fields(attempt.Result.Status); len(words) > 0 {
+					status = words[0]
+				}
+				noGate = "(no gate ran: " + cell(status) + ")"
+			}
 			for _, g := range attempt.Gates {
 				// Older saved batches used exit_code instead of ok. Unknown
 				// gate status is not evidence of a failing gate.
@@ -188,7 +205,10 @@ func gateMessage(home string, e evalRecord, t taskResult) string {
 			}
 		}
 	}
-	return "(gate output not kept)"
+	if noGate != "" {
+		return noGate
+	}
+	return "(attempt not found)"
 }
 
 func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
