@@ -2,7 +2,7 @@
 name: check
 description: Run hrn-evals' offline checks (Go build and vet, script syntax, suite lint) before a PR; never runs an eval
 ---
-There is no CI; these are the checks a PR must pass. From the repository root, in Git Bash, in
+CI runs these same checks; a PR must pass them. From the repository root, in Git Bash, in
 this order, stopping at the first failure:
 
 ```bash
