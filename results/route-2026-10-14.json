@@ -1,0 +1,37 @@
+{
+  "debug": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "b123c",
+    "set": "2026-10-14"
+  },
+  "implement": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "b123c",
+    "set": "2026-10-14"
+  },
+  "research": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "medium",
+    "eval": "b123c",
+    "set": "2026-10-14"
+  },
+  "test": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "b123c",
+    "set": "2026-10-14"
+  },
+  "unknown": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "b123c",
+    "set": "2026-10-14"
+  }
+}

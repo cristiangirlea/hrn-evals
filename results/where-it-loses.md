@@ -1,14 +1,28 @@
 # Where it loses
 
-Date: 2026-10-13 (latest saved eval, UTC).
+Date: 2026-10-14 (latest saved eval, UTC).
 
 Produced by: <code>scripts/where-it-loses.sh</code>
 
-Evals read: 55. Unreadable or invalid evals skipped: 0.
+Evals read: 56. Unreadable or invalid evals skipped: 0.
 
 Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Suites are identified by their sorted task ID set and labelled by the matching file under suites/, falling back to joined task IDs. Only the first failing gate's command and last three output lines are retained here.
 
 ## Failing cases
+
+### routing/codex-first-table
+
+#### luna-low
+
+| Task | Passed/total (failed) | Eval | Gate message | History |
+|---|---|---|---|---|
+| go-explain-goroutines | 0/1 (1 failed) | b123c | <code>test -s fixtures/gobench/GOROUTINES.md &#124;&#124; { echo &#39;GOROUTINES.md is missing or empty&#39;; exit 1; }</code><br>GOROUTINES.md is missing or empty |  |
+
+#### luna-medium
+
+| Task | Passed/total (failed) | Eval | Gate message | History |
+|---|---|---|---|---|
+| go-rest-items | 0/1 (1 failed) | b123c | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	1.626s<br>FAIL<br>the handler does not meet the contract |  |
 
 ### golden/gobench
 
@@ -85,7 +99,9 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 
 Cheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Estimated costs are marked. Cost overruns mean higher median cost per attempt despite a lower total. Only tasks present for both variants are compared.
 
-No cheaper-variant losses or median cost overruns in saved comparisons.
+| Suite | Cheaper variant / other | Task | Eval | Passed/total (cheaper / other) | Total USD (cheaper / other) | Median USD (cheaper / other) | Median context tokens (cheaper / other) | Loss |
+|---|---|---|---|---|---|---|---|---|
+| routing/codex-first-table | luna-medium / luna-low | go-rest-items | b123c | 0/1 / 1/1 | 0 / 0 | 0 / 0 | 129934 / 146509.5 | fewer passes |
 
 ## Outside reports
 
