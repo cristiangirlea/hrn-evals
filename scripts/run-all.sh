@@ -38,8 +38,9 @@ else
 	exit 1
 fi
 while IFS= read -r -d '' fixture; do
-	"${hash[@]}" "$fixture"
-done < <(find fixtures/ -type f -print0 | sort -z)
+	read -r sum _ < <("${hash[@]}" "$fixture")
+	printf '%s  %s\n' "$sum" "$fixture"
+done < <(find fixtures/ -type f -print0 | LC_ALL=C sort -z)
 
 failed=0
 for s in "${suites[@]}"; do
