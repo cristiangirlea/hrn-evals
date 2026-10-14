@@ -46,9 +46,10 @@ type batchRecord struct {
 		ID       string `json:"id"`
 		Attempts []struct {
 			Gates []struct {
-				Command string `json:"command"`
-				OK      bool   `json:"ok"`
-				Output  string `json:"output"`
+				Command  string `json:"command"`
+				OK       *bool  `json:"ok"`
+				ExitCode *int   `json:"exit_code"`
+				Output   string `json:"output"`
 			} `json:"gates"`
 		} `json:"attempts"`
 	} `json:"tasks"`
@@ -122,7 +123,13 @@ func gateMessage(home string, e evalRecord, t taskResult) string {
 		}
 		for _, attempt := range bt.Attempts {
 			for _, g := range attempt.Gates {
-				if g.OK {
+				// Older saved batches used exit_code instead of ok. Unknown
+				// gate status is not evidence of a failing gate.
+				failed := g.OK != nil && !*g.OK
+				if g.OK == nil && g.ExitCode != nil {
+					failed = *g.ExitCode != 0
+				}
+				if !failed {
 					continue
 				}
 				lines := strings.Split(strings.TrimRight(strings.ReplaceAll(g.Output, "\r\n", "\n"), "\n"), "\n")

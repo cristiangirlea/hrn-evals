@@ -29,6 +29,7 @@ func TestGenerate(t *testing.T) {
 	      {"name":"large","total_cost_usd":2,"median_cost_usd":0.5,"median_context_tokens":10}],
 	    "tasks":[
 	      {"task":"missing","variant":"small","passed":0,"total":2},
+	      {"task":"exit-status","variant":"small","passed":0,"total":1},
 	      {"task":"broken","variant":"small","passed":1,"total":2},
 	      {"task":"broken","variant":"large","passed":2,"total":2}]}}
 	`)
@@ -39,6 +40,10 @@ func TestGenerate(t *testing.T) {
 	`)
 	write("batches/batch-old.json", `{
 	  "tasks":[
+	    {"id":"z-old.exit-status.small.r1","attempts":[{"gates":[
+	      {"command":"UNKNOWN STATUS","output":"UNKNOWN OUTPUT"},
+	      {"command":"EXIT SUCCESS","exit_code":0,"output":"SUCCESS OUTPUT"},
+	      {"command":"exit-check","exit_code":1,"output":"exit gate failed"}]}]},
 	    {"id":"z-old.broken.small.r1-extra","attempts":[{"gates":[{"command":"WRONG GATE","ok":false,"output":"WRONG OUTPUT"}]}]},
 	    {"id":"z-old.broken.large.r1","attempts":[{"gates":[{"command":"OTHER VARIANT","ok":false,"output":"WRONG OUTPUT"}]}]},
 	    {"id":"z-old.broken.small.r1","prompt":"PRIVATE BATCH PROMPT","attempts":[
@@ -64,6 +69,7 @@ func TestGenerate(t *testing.T) {
 		"### sample", "#### small", "| broken | 1/2 (1 failed) | z-old |",
 		"<code>check &#124; verify &lt;safe&gt;</code><br>last one<br>last two &#124; &lt;tag&gt;<br>last three",
 		"fixed in eval a-new", "| missing | 0/2 (2 failed) | z-old | (gate output not kept) |",
+		"| exit-status | 0/1 (1 failed) | z-old | <code>exit-check</code><br>exit gate failed |",
 		"| sample | small / large | broken | z-old | 1/2 / 2/2 | 1 (estimate) / 2 |",
 		"fewer passes; higher median cost",
 		outsideStart + "\nReal run: 2026-10-04, local setup.\n\n<!-- custom -->\n" + outsideEnd,
@@ -72,7 +78,7 @@ func TestGenerate(t *testing.T) {
 			t.Errorf("missing %q in page:\n%s", want, page)
 		}
 	}
-	for _, unwanted := range []string{"PRIVATE", "OMITTED LINE", "PASSING COMMAND", "PASSING OUTPUT", "SECOND FAILURE", "SECOND OUTPUT", "WRONG", "OTHER VARIANT", "old generated content"} {
+	for _, unwanted := range []string{"PRIVATE", "OMITTED LINE", "PASSING COMMAND", "PASSING OUTPUT", "SECOND FAILURE", "SECOND OUTPUT", "WRONG", "OTHER VARIANT", "old generated content", "UNKNOWN", "EXIT SUCCESS", "SUCCESS OUTPUT"} {
 		if strings.Contains(page, unwanted) {
 			t.Errorf("leaked %q", unwanted)
 		}
