@@ -27,7 +27,7 @@ for backend in claude codex; do
 	fi
 done
 echo "suite commit: $(git rev-parse HEAD)"
-echo "model ids: from each suite's matrix, saved in each eval's spec"
+echo "model ids: eval specs save the Claude alias sonnet and no Codex model; the resolved Claude id is in the batch record's attempt result; Codex records no model id"
 echo "fixture SHA-256 hashes:"
 if command -v sha256sum >/dev/null 2>&1; then
 	hash=(sha256sum)
