@@ -61,7 +61,7 @@ both ways (README, "Adding a suite", step 4); the run of each variant is the own
 ## Working rules
 
 - One branch per change, one PR. **Everything is tested before a merge**: the full local checks
-  (`/check`; there is no CI here) and tests for every behaviour the change adds or alters, short
+  (`/check`), CI green, and tests for every behaviour the change adds or alters, short
   of starting an eval. Only then may an agent merge its PR, and only through the PR
   (`gh pr merge <n> --merge --delete-branch --match-head-commit <sha>`), when an independent
   review ran and its findings are fixed, a security read of the diff has nothing open, and the
