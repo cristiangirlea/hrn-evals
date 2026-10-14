@@ -1,4 +1,4 @@
-# hrn-evals (private)
+# hrn-evals
 
 Eval suites for hrn, the owner's agent harness (repository `cristiangirlea/harness`), kept as
 data: each `suites/<kind>/<name>.json` is an `hrn eval` spec (tasks, a matrix of agents to
@@ -26,7 +26,7 @@ steps for adding a suite; read it before writing or changing a suite.
 ## Running evals
 
 The spec format, the judge and `hrn eval diff` are documented in the harness README, section
-"Evals" (local clone `E:\__Workdir\personal\harness\README.md`). Records go to `~/.hrn/evals`.
+"Evals". Records go to `~/.hrn/evals`.
 
 - **Never start an eval** (`hrn eval <spec>`, `scripts/run-all.sh`) unless the owner asks in this
   session: every cell is a real agent run on the owner's Claude Code and Codex accounts, and
@@ -38,9 +38,9 @@ The spec format, the judge and `hrn eval diff` are documented in the harness REA
 
 ## Checks (`/check`)
 
-There is no CI: the agents need logged-in CLIs a hosted runner lacks. The plan is a nightly job
-on the local cluster from the `infra` repository; never add a GitHub Actions workflow on hosted
-runners. Before a PR, run the offline checks (Go 1.26, Git Bash, Node.js for the suite lint):
+CI (`.github/workflows/ci.yml`, GitHub's hosted runners: the repository is public, so never the
+owner's runners) runs the offline checks below and never an eval: the agents need logged-in CLIs,
+and only the owner starts evals, locally. Before a PR, run the same (Go 1.26, Git Bash, Node.js):
 
 ```bash
 go build ./... && go vet ./...
