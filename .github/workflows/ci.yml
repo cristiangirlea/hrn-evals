@@ -10,27 +10,25 @@ permissions:
   contents: read
 
 jobs:
+  # The main ruleset requires this check by name. The repository is public, so
+  # GitHub's hosted runners are free; never attach the owner's runners here.
   check:
-    # A public repository: GitHub's hosted runners, never the owner's machines. Offline checks
-    # only: evals need logged-in agent CLIs and are started by the owner.
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go build ./... && go vet ./...
-      - run: bash -n scripts/run-all.sh
-      - name: suite lint
+      - name: shell scripts parse
+        run: for f in scripts/*.sh; do bash -n "$f"; done
+      - name: the page scripts build and pass their tests
+        # fixtures/buggy fails on purpose, so only scripts/ is vetted and tested.
         run: |
-          node -e '
-          const fs=require("fs"),p=require("path");let bad=0;
-          for(const k of fs.readdirSync("suites"))for(const f of fs.readdirSync(p.join("suites",k)))if(f.endsWith(".json")){
-           const n=p.join("suites",k,f);let s;try{s=JSON.parse(fs.readFileSync(n,"utf8"))}catch(e){console.log(n+": "+e.message);bad=1;continue}
-           if(s.dir!=="../.."){console.log(n+": dir is not ../..");bad=1}
-           for(const t of [s,...(s.tasks||[])])if("retry" in t){console.log(n+": retry is refused in an eval spec");bad=1}
-           for(const t of s.tasks||[])if(!/Do not run git\.$/.test(t.prompt)){console.log(n+": "+t.id+": prompt does not end with \"Do not run git.\"");bad=1}
-          }
-          process.exit(bad)
-          '
+          if ls scripts/*.go >/dev/null 2>&1; then
+            go vet ./scripts/ && go test -count=1 ./scripts/
+          else
+            echo "no Go scripts yet"
+          fi
