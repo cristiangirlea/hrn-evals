@@ -21,7 +21,7 @@ hrn version
 for backend in claude codex; do
 	if command -v "$backend" >/dev/null 2>&1; then
 		echo "$backend version:"
-		"$backend" --version
+		"$backend" --version || echo "$backend: version unavailable"
 	else
 		echo "$backend: (not installed)"
 	fi
