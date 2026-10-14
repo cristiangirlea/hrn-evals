@@ -16,7 +16,7 @@ if [ ${#suites[@]} -eq 0 ]; then
 fi
 
 echo "pins:"
-echo "hrn version (including commit):"
+echo "hrn version:"
 hrn version
 for backend in claude codex; do
 	if command -v "$backend" >/dev/null 2>&1; then
