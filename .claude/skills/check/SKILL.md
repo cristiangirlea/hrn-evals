@@ -1,12 +1,13 @@
 ---
 name: check
-description: Run hrn-evals' offline checks (Go build and vet, script syntax, suite lint) before a PR; never runs an eval
+description: Run hrn-evals' offline checks (Go build and vet, script smoke tests and syntax, suite lint) before a PR; never runs an eval
 ---
 CI runs these same checks; a PR must pass them. From the repository root, in Git Bash, in
 this order, stopping at the first failure:
 
 ```bash
 go build ./... && go vet ./...
+go test -count=1 ./scripts/
 bash -n scripts/run-all.sh
 node -e '
 const fs=require("fs"),p=require("path");let bad=0;

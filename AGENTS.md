@@ -46,6 +46,7 @@ and only the owner starts evals, locally. Before a PR, run the same (Go 1.26, Gi
 ```bash
 go build ./... && go vet ./...
 bash -n scripts/run-all.sh
+go test -count=1 ./scripts/
 ```
 
 plus the suite lint in `.claude/skills/check/SKILL.md` (every spec parses, `"dir": "../.."`, no
