@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if ! git diff --quiet HEAD --; then
+if [ -n "$(git status --porcelain)" ]; then
 	echo "run-all: commit or stash local changes first; the agents branch from HEAD" >&2
 	exit 1
 fi
