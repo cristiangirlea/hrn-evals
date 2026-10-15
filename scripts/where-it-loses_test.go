@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -214,15 +217,18 @@ func TestUnnamedSuiteFix(t *testing.T) {
 		}
 		return e
 	}
-	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"b"},{"id":"a"}]}}`)
+	const matrix = `"matrix":[{"name":"small"},{"name":"large"}]`
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"b"},{"id":"a"}],` + matrix + `}}`)
 	task := taskResult{Task: "a", Variant: "small", Total: 1}
 	for _, tc := range []struct{ name, spec, variant, want string }{
 		{"same set reordered", `[{"id":"a"},{"id":"b"}]`, "small", "fixed in eval later"},
-		{"different set", `[{"id":"a"}]`, "small", ""},
+		// A one-task run with task a defined as before would be a re-run of
+		// the cell; this one changes it.
+		{"different set", `[{"id":"a","prompt":"changed"}]`, "small", ""},
 		{"other variant", `[{"id":"a"},{"id":"b"}]`, "large", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":{"tasks":` + tc.spec + `},"table":{"tasks":[{"task":"a","variant":"` + tc.variant + `","passed":1,"total":1}]}}`)
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":{"tasks":` + tc.spec + `,` + matrix + `},"table":{"tasks":[{"task":"a","variant":"` + tc.variant + `","passed":1,"total":1}]}}`)
 			if got := fixedIn([]evalRecord{later}, old, task); got != tc.want {
 				t.Errorf("fixedIn = %q, want %q", got, tc.want)
 			}
@@ -237,8 +243,8 @@ func TestSuiteFileLabel(t *testing.T) {
 	root := t.TempDir()
 	t.Chdir(root)
 	for path, content := range map[string]string{
-		"suites/golden/sample.json": `{"tasks":[{"id":"b"},{"id":"a"}]}`,
-		"evals/old.json":            `{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"a"},{"id":"b"}]},"table":{"tasks":[{"task":"a","variant":"small","total":1}]}}`,
+		"suites/golden/sample.json": `{"tasks":[{"id":"b"},{"id":"a"}],"matrix":[{"name":"small"}]}`,
+		"evals/old.json":            `{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"name":"small"}]},"table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","total":1}]}}`,
 	} {
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 			t.Fatal(err)
@@ -282,7 +288,8 @@ func TestAllCostsAreEstimates(t *testing.T) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	if strings.Contains(page.String(), "0 (estimate)") {
+	// A zero, not a number ending in one (10, 0.50), marked as an estimate.
+	if regexp.MustCompile(`(^|[^0-9.])0 \(estimate\)`).MatchString(page.String()) {
 		t.Error("zero cost marked as an estimate")
 	}
 }
@@ -301,13 +308,15 @@ func TestSuiteMatrixLabels(t *testing.T) {
 	}
 	write("suites/routing/first.json", `{"tasks":[{"id":"b"},{"id":"a"}],"matrix":[{"name":"small"},{"name":"large"}]}`)
 	write("suites/routing/second.json", `{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"name":"small"},{"name":"other"}]}`)
-	for _, tc := range []struct{ id, tasks, matrix, want string }{
-		{"first", `[{"id":"a"},{"id":"b"},{"id":"a"}]`, `[{"name":"large"},{"name":"small"}]`, "routing/first"},
-		{"second", `[{"id":"b"},{"id":"a"}]`, `[{"name":"other"},{"name":"small"}]`, "routing/second"},
-		{"task-fallback", `[{"id":"b"},{"id":"a"}]`, `[{"name":"unknown"}]`, "routing/first"},
-		{"ids-fallback", `[{"id":"z"},{"id":"a"}]`, `[{"name":"small"},{"name":"large"}]`, "a, z"},
+	// Each record's table has a row per variant of its own matrix: the cheap
+	// one fails task a, the dear one passes it.
+	for _, tc := range []struct{ id, tasks, cheap, dear string }{
+		{"first", `[{"id":"a"},{"id":"b"},{"id":"a"}]`, "small", "large"},
+		{"second", `[{"id":"b"},{"id":"a"}]`, "other", "small"},
+		{"task-fallback", `[{"id":"b"},{"id":"a"}]`, "unknown", "small"},
+		{"ids-fallback", `[{"id":"z"},{"id":"a"}]`, "small", "large"},
 	} {
-		write("evals/"+tc.id+".json", `{"id":"`+tc.id+`","started":"2026-10-15T00:00:00Z","spec":{"tasks":`+tc.tasks+`,"matrix":`+tc.matrix+`},"table":{"variants":[{"name":"small"},{"name":"large","total_cost_usd":1}],"tasks":[{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1}]}}`)
+		write("evals/"+tc.id+".json", `{"id":"`+tc.id+`","started":"2026-10-15T00:00:00Z","spec":{"tasks":`+tc.tasks+`,"matrix":[{"name":"`+tc.dear+`"},{"name":"`+tc.cheap+`"}]},"table":{"variants":[{"name":"`+tc.cheap+`"},{"name":"`+tc.dear+`","total_cost_usd":1}],"tasks":[{"task":"a","variant":"`+tc.cheap+`","total":1},{"task":"a","variant":"`+tc.dear+`","passed":1,"total":1}]}}`)
 	}
 	// Two suites share a task set and differ only in an unnamed variant. The
 	// key holds the name hrn gives it, codex-m1, so the record matches the file
@@ -332,14 +341,21 @@ func TestSuiteMatrixLabels(t *testing.T) {
 	page := string(b)
 	for _, want := range []string{
 		"| routing/first | small / large | a | first |",
-		"| routing/second | small / large | a | second |",
-		"| routing/first | small / large | a | task-fallback |",
+		"| routing/second | other / small | a | second |",
+		"| routing/first | unknown / small | a | task-fallback |",
 		"| a, z | small / large | a | ids-fallback |",
-		"### routing/first\n", "### routing/second\n", "### a, z\n",
-		"### routing/unnamed-codex\n", "| c | 0/1 (1 failed) | unnamed |",
+		"| c | 0/1 (1 failed) | unnamed |",
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q", want)
+		}
+	}
+	// One heading per suite: first and task-fallback share a task set and a
+	// label, second shares only the task set, and the sort keeps each label's
+	// rows together.
+	for _, heading := range []string{"### routing/first\n", "### routing/second\n", "### a, z\n", "### routing/unnamed-codex\n"} {
+		if n := strings.Count(page, heading); n != 1 {
+			t.Errorf("%q appears %d times, want once", heading, n)
 		}
 	}
 	if strings.Contains(page, "unnamed-claude") {
@@ -563,6 +579,76 @@ func TestSpecNullOrNotObject(t *testing.T) {
 	for _, unwanted := range []string{"fixed in eval", "PRIVATE"} {
 		if strings.Contains(page, unwanted) {
 			t.Errorf("leaked %q", unwanted)
+		}
+	}
+}
+
+func TestDuplicateSuiteFiles(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	for path, content := range map[string]string{
+		"suites/golden/one.json": `{"tasks":[{"id":"a"}],"matrix":[{"name":"small"}]}`,
+		"suites/golden/two.json": `{"tasks":[{"id":"a"}],"matrix":[{"name":"small"}]}`,
+		// Sharing only the task set is the fallback, not a clash.
+		"suites/golden/three.json": `{"tasks":[{"id":"a"}],"matrix":[{"name":"large"}]}`,
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := suiteLabels(); err == nil || !strings.Contains(err.Error(), "suites/golden/one.json and suites/golden/two.json") {
+		t.Errorf("suiteLabels error = %v, want both files named", err)
+	}
+	if err := os.Remove("suites/golden/two.json"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := suiteLabels(); err != nil {
+		t.Errorf("a shared task set alone was refused: %v", err)
+	}
+}
+
+// The page states the re-run rule and sameCell's comment explains it: both
+// must name what is compared and what is not, in the same words.
+func TestRuleSentenceMatchesComment(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "where-it-loses.go", nil, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	comment := ""
+	for _, c := range file.Comments {
+		if text := c.Text(); strings.HasPrefix(text, "sameCell reports") {
+			comment = strings.Join(strings.Fields(text), " ")
+		}
+	}
+	if comment == "" {
+		t.Fatal("sameCell's comment not found")
+	}
+	home := t.TempDir()
+	if err := os.Mkdir(filepath.Join(home, "evals"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(home, "page.md")
+	if err := generate(home, out, "generate"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, clause := range []string{
+		"top-level fields apart from dir, parallel and repeats",
+		"inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec",
+		"is matched by the name hrn gives it, backend[-model][-effort]",
+		"the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit",
+	} {
+		if !strings.Contains(string(b), clause) {
+			t.Errorf("the page's rule sentence lacks %q", clause)
+		}
+		if !strings.Contains(comment, clause) {
+			t.Errorf("sameCell's comment lacks %q", clause)
 		}
 	}
 }
