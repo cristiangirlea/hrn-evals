@@ -10,6 +10,17 @@ import (
 	"testing"
 )
 
+// runAllCase says how the sandbox for one run of run-all.sh differs from a
+// clean checkout with every tool present.
+type runAllCase struct {
+	noCodex   bool
+	dirty     bool   // a tracked file changed after the commit
+	untracked bool   // a new file left uncommitted
+	hash      string // the hash tool on PATH: "sha256sum" (default), "shasum" or "none"
+	failSuite string // the suite whose hrn eval exits 1
+	failGit   string // the git subcommand that exits 128, as outside a repository
+}
+
 func TestRunAll(t *testing.T) {
 	bash, err := exec.LookPath("bash")
 	if err != nil {
@@ -20,16 +31,31 @@ func TestRunAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Resolve only the tools allowed in the sandbox; never inherit a real hrn.
-	paths := map[string]string{}
-	for _, tool := range []string{"bash", "git", "dirname", "find", "sort", "sha256sum"} {
+	lookup := func(tool string) string {
 		out, err := exec.Command(bash, "--noprofile", "--norc", "-c", "type -P "+tool).CombinedOutput()
 		if err != nil {
-			t.Fatalf("find %s: %v: %s", tool, err, out)
+			return ""
 		}
-		paths[tool] = strings.TrimSpace(string(out))
+		return strings.TrimSpace(string(out))
+	}
+	paths := map[string]string{}
+	for _, tool := range []string{"bash", "git", "dirname", "find", "sort"} {
+		if paths[tool] = lookup(tool); paths[tool] == "" {
+			t.Fatalf("%s is not on bash's PATH", tool)
+		}
 	}
 	quote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'" }
-	run := func(t *testing.T, noCodex, dirty, noHash bool) (string, string, int, string) {
+	// The real SHA-256 tool behind both stubs: sha256sum where it exists (Git
+	// Bash, Linux), shasum -a 256 where only that does (macOS).
+	realHash := ""
+	if p := lookup("sha256sum"); p != "" {
+		realHash = quote(p)
+	} else if p := lookup("shasum"); p != "" {
+		realHash = quote(p) + " -a 256"
+	} else {
+		t.Skip("neither sha256sum nor shasum is on PATH")
+	}
+	run := func(t *testing.T, c runAllCase) (string, string, int, string) {
 		t.Helper()
 		root := t.TempDir()
 		write := func(name, content string) {
@@ -47,21 +73,37 @@ func TestRunAll(t *testing.T) {
 		write("suites/golden/a.json", "{}\n")
 		write("suites/golden/b.json", "{}\n")
 		shell := "#!" + paths["bash"] + "\n"
-		for _, tool := range []string{"git", "dirname", "find", "sort", "sha256sum"} {
-			if tool == "sha256sum" && noHash {
-				continue
-			}
+		for _, tool := range []string{"dirname", "find", "sort"} {
 			write("bin/"+tool, shell+"exec "+quote(paths[tool])+" \"$@\"\n")
+		}
+		write("bin/git", shell+`if [ "$1" = `+quote(c.failGit)+` ]; then
+ echo "fatal: not a git repository" >&2
+ exit 128
+fi
+exec `+quote(paths["git"])+` "$@"
+`)
+		switch c.hash {
+		case "", "sha256sum":
+			write("bin/sha256sum", shell+"exec "+realHash+" \"$@\"\n")
+		case "shasum":
+			// Refuses anything but -a 256, so a passing run shows the script
+			// asked for SHA-256.
+			write("bin/shasum", shell+`if [ "$1" = -a ] && [ "$2" = 256 ]; then shift 2; else exit 2; fi
+exec `+realHash+` "$@"
+`)
 		}
 		write("bin/hrn", shell+`printf '%s\n' "$*" >> calls
 if [ "$1" = version ]; then
  printf 'hrn v0.0.0 (commit stub123)\n'
+elif [ "$1 $2" = `+quote("eval "+c.failSuite)+` ]; then
+ printf 'stub eval failed\n'
+ exit 1
 else
  printf 'stub eval\n'
 fi
 `)
 		write("bin/claude", shell+"printf 'claude stub version\\n'\n")
-		if !noCodex {
+		if !c.noCodex {
 			write("bin/codex", shell+"printf 'codex stub version\\n'\n")
 		}
 		git := func(args ...string) string {
@@ -78,8 +120,11 @@ fi
 		git("add", ".")
 		git("-c", "user.name=Smoke test", "-c", "user.email=smoke@example.invalid", "commit", "--quiet", "-m", "fixture")
 		head := git("rev-parse", "HEAD")
-		if dirty {
+		if c.dirty {
 			write("fixtures/sample.txt", "dirty\n")
+		}
+		if c.untracked {
+			write("fixtures/new.txt", "new\n")
 		}
 		// Set PATH inside bash to avoid Windows PATH conversion and exclude host CLIs.
 		cmd := exec.Command(bash, "--noprofile", "--norc", "-c", "PATH=\"$PWD/bin\"; export PATH; exec "+quote(paths["bash"])+" scripts/run-all.sh")
@@ -100,15 +145,14 @@ fi
 		}
 		return string(out), string(calls), code, head
 	}
-	var normalCode int
+	fixtureHash := fmt.Sprintf("%x  fixtures/sample.txt\n", sha256.Sum256([]byte("fixture\n")))
 	t.Run("pins before evals", func(t *testing.T) {
-		out, calls, code, head := run(t, false, false, false)
-		normalCode = code
+		out, calls, code, head := run(t, runAllCase{})
 		if code != 0 {
 			t.Fatalf("exit %d:\n%s", code, out)
 		}
 		previous := -1
-		for _, want := range []string{"pins:\n", "hrn version:\n", "hrn v0.0.0 (commit stub123)\n", "codex version:\n", "codex stub version\n", "suite commit: " + head + "\n", "fixture SHA-256 hashes:\n", fmt.Sprintf("%x  fixtures/sample.txt\n", sha256.Sum256([]byte("fixture\n"))), "=== suites/golden/a.json\n", "stub eval\n"} {
+		for _, want := range []string{"pins:\n", "hrn version:\n", "hrn v0.0.0 (commit stub123)\n", "codex version:\n", "codex stub version\n", "suite commit: " + head + "\n", "fixture SHA-256 hashes:\n", fixtureHash, "=== suites/golden/a.json\n", "stub eval\n"} {
 			pos := strings.Index(out, want)
 			if pos <= previous {
 				t.Fatalf("missing or out of order %q:\n%s", want, out)
@@ -120,21 +164,57 @@ fi
 		}
 	})
 	t.Run("codex absent", func(t *testing.T) {
-		out, calls, code, _ := run(t, true, false, false)
-		if code != normalCode || !strings.Contains(out, "codex: (not installed)\n") || !strings.HasSuffix(calls, "eval list -n 2\n") {
+		out, calls, code, _ := run(t, runAllCase{noCodex: true})
+		if code != 0 || !strings.Contains(out, "codex: (not installed)\n") || !strings.HasSuffix(calls, "eval list -n 2\n") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
 	})
-	t.Run("dirty tree", func(t *testing.T) {
-		out, calls, code, _ := run(t, false, true, false)
-		if code != 1 || strings.Contains(out, "pins:") || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
+	for _, c := range []struct {
+		name string
+		c    runAllCase
+	}{
+		{"dirty tree", runAllCase{dirty: true}},
+		{"untracked file", runAllCase{untracked: true}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, calls, code, _ := run(t, c.c)
+			if code != 1 || strings.Contains(out, "pins:") || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
+				t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+			}
+		})
+	}
+	t.Run("shasum fallback", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{hash: "shasum"})
+		if code != 0 || !strings.Contains(out, fixtureHash) || !strings.HasSuffix(calls, "eval list -n 2\n") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
 	})
 	t.Run("hash tools absent", func(t *testing.T) {
-		out, calls, code, _ := run(t, false, false, true)
+		out, calls, code, _ := run(t, runAllCase{hash: "none"})
 		if code != 1 || !strings.Contains(out, "run-all: sha256sum or shasum is required for fixture pins") || calls != "version\n" {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	// git failing must stop the run, not read as a clean tree or an empty
+	// suite commit; no eval may start.
+	t.Run("git status fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{failGit: "status"})
+		if code == 0 || calls != "" || strings.Contains(out, "pins:") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("git rev-parse fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{failGit: "rev-parse"})
+		if code == 0 || calls != "version\n" || strings.Contains(out, "suite commit:") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("a failing eval", func(t *testing.T) {
+		// The other suites still run, and the list comes last, so the failed
+		// run's id is there to read; the script exits 1.
+		out, calls, code, _ := run(t, runAllCase{failSuite: "suites/golden/a.json"})
+		if want := "version\neval suites/golden/a.json\neval suites/golden/b.json\neval list -n 2\n"; code != 1 || calls != want {
+			t.Fatalf("exit %d, calls %q, want exit 1 and %q:\n%s", code, calls, want, out)
 		}
 	})
 }

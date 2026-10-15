@@ -5,7 +5,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if ! git diff --quiet HEAD --; then
+# Plain assignments, so that set -e stops the script when git fails: inside the
+# if a failure would read as a clean tree, inside echo as an empty commit.
+status=$(git status --porcelain)
+if [ -n "$status" ]; then
 	echo "run-all: commit or stash local changes first; the agents branch from HEAD" >&2
 	exit 1
 fi
@@ -26,7 +29,8 @@ for backend in claude codex; do
 		echo "$backend: (not installed)"
 	fi
 done
-echo "suite commit: $(git rev-parse HEAD)"
+commit=$(git rev-parse HEAD)
+echo "suite commit: $commit"
 echo "model ids: eval specs save the Claude alias sonnet and no Codex model; the resolved Claude id is in the batch record's attempt result; Codex records no model id"
 echo "fixture SHA-256 hashes:"
 if command -v sha256sum >/dev/null 2>&1; then
