@@ -1,0 +1,47 @@
+package refactor_test
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/purposes/refactor"
+)
+
+func TestBehaviour(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		values    []int
+		sum, mean float64
+	}{
+		{"nil", nil, 0, 0},
+		{"empty", []int{}, 0, 0},
+		{"single", []int{7}, 7, 7},
+		{"mixed", []int{-4, 0, 7}, 3, 1},
+		{"fractional", []int{1, 2}, 3, 1.5},
+		{"negative", []int{-3, -2}, -5, -2.5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, op := range []struct {
+				name string
+				call func([]int) (float64, error)
+				want float64
+			}{{"Sum", refactor.Sum, tc.sum}, {"Mean", refactor.Mean, tc.mean}} {
+				before := append([]int{}, tc.values...)
+				if tc.values == nil {
+					before = nil
+				}
+				got, err := op.call(tc.values)
+				if len(tc.values) == 0 {
+					if got != 0 || err == nil || err.Error() != "values must not be empty" {
+						t.Errorf("%s(empty) = %v, %v", op.name, got, err)
+					}
+				} else if err != nil || got != op.want {
+					t.Errorf("%s(%v) = %v, %v; want %v, nil", op.name, tc.values, got, err, op.want)
+				}
+				if !reflect.DeepEqual(tc.values, before) {
+					t.Errorf("%s changed input", op.name)
+				}
+			}
+		})
+	}
+}

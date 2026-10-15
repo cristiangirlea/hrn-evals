@@ -1,0 +1,13 @@
+package ops_test
+
+import (
+	"testing"
+
+	"example.com/purposes/ops"
+)
+
+func TestAdd(t *testing.T) {
+	if got := ops.Add(2, 3); got != 5 {
+		t.Fatalf("Add(2, 3) = %d, want 5", got)
+	}
+}
