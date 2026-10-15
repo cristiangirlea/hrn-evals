@@ -288,7 +288,7 @@ func TestAllCostsAreEstimates(t *testing.T) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	// A zero, not a number ending in one (10, 0.50), marked as an estimate.
+	// A zero marked as an estimate, not a number that ends in a zero (10, 0.50).
 	if regexp.MustCompile(`(^|[^0-9.])0 \(estimate\)`).MatchString(page.String()) {
 		t.Error("zero cost marked as an estimate")
 	}
@@ -309,10 +309,12 @@ func TestSuiteMatrixLabels(t *testing.T) {
 	write("suites/routing/first.json", `{"tasks":[{"id":"b"},{"id":"a"}],"matrix":[{"name":"small"},{"name":"large"}]}`)
 	write("suites/routing/second.json", `{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"name":"small"},{"name":"other"}]}`)
 	// Each record's table has a row per variant of its own matrix: the cheap
-	// one fails task a, the dear one passes it.
+	// one fails task a, the dear one passes it. first, second and task-fallback
+	// share a task set; first and second fail on the same variant, so only the
+	// label tie-break keeps first and task-fallback apart from second.
 	for _, tc := range []struct{ id, tasks, cheap, dear string }{
 		{"first", `[{"id":"a"},{"id":"b"},{"id":"a"}]`, "small", "large"},
-		{"second", `[{"id":"b"},{"id":"a"}]`, "other", "small"},
+		{"second", `[{"id":"b"},{"id":"a"}]`, "small", "other"},
 		{"task-fallback", `[{"id":"b"},{"id":"a"}]`, "unknown", "small"},
 		{"ids-fallback", `[{"id":"z"},{"id":"a"}]`, "small", "large"},
 	} {
@@ -341,7 +343,7 @@ func TestSuiteMatrixLabels(t *testing.T) {
 	page := string(b)
 	for _, want := range []string{
 		"| routing/first | small / large | a | first |",
-		"| routing/second | other / small | a | second |",
+		"| routing/second | small / other | a | second |",
 		"| routing/first | unknown / small | a | task-fallback |",
 		"| a, z | small / large | a | ids-fallback |",
 		"| c | 0/1 (1 failed) | unnamed |",
