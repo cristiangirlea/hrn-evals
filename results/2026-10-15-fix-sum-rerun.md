@@ -2,8 +2,10 @@
 
 In the morning's routing run ([2026-10-15-routing](2026-10-15-routing.md), eval `f353a`) Luna at
 low effort passed `fix-sum` once in three. The two failing runs made no tool call: each read
-`AGENTS.md`, quoted its sentence "Never fix it on a branch of this repository" back, and stopped,
-since an eval worktree is a branch of this repository. PR #22 (issue #21, merge commit
+`AGENTS.md` and stopped at its fixture bullet, r1 quoting the ban ("Never fix it on a branch of
+this repository", and an eval worktree is a branch of this repository), r3 the allowance ("an
+agent fixes it in an eval worktree") while unsure whether this worktree was the one. PR #22
+(issue #21, merge commit
 `dd56a3b`) reworded that bullet. With the owner's go, the one cell was re-run from `dd56a3b`
 seven minutes after the merge: eval `3e41f`. Every number on this page is **measured** on that
 run or on `f353a` unless marked otherwise.
@@ -33,15 +35,17 @@ that starts the loop at index 0 instead of 1, and `go test ./fixtures/buggy/`, w
 r3 spent one of its three tool calls on an empty command. Both gates passed on every cell:
 the test is green and `sum_test.go` is unchanged. The scratch clone and the branches hrn
 committed each cell to were removed after the run, so the three diffs themselves are not in
-the record; the transcripts (`hrn show <run>`) and the gate outputs are. Cache write is 0 on
-every run; codex counts cache reads inside `input` (inclusive semantics) and reports no price.
-The cost is the codex plan, not a per-token bill.
+the record; the transcripts (`hrn show <run>`) and the gate outputs are. Codex reports no
+cache-write field; it counts cache reads inside `input` (inclusive semantics) and reports no
+price. The cost is the codex plan, not a per-token bill.
 
 ## Against f353a
 
-`hrn eval diff f353a 3e41f` shows one row that changed, `fix-sum` on `luna-low`, 1/3 → 3/3;
-every other cell of `f353a` is "only in f353a", since `3e41f` ran nothing else. The three
-`f353a` runs of this cell, from the same records:
+`hrn eval diff f353a 3e41f` shows one task row that changed, `fix-sum` on `luna-low`, 1/3 → 3/3;
+every other task row ends in `-` and the other three variants are "only in f353a", since `3e41f`
+ran nothing else. Its variant row, `luna-low` 72% → 100% and 24 s → 17 s, pools the 18 Luna cells
+of `f353a` against these 3 and is not a comparison. The three `f353a` runs of this cell, from
+the same records:
 
 | repetition | run | result | turns | tool calls | input | output | cache read | time |
 |---|---|---|---:|---:|---:|---:|---:|---:|
@@ -55,37 +59,50 @@ in an eval worktree" and that the instruction did not say whether this worktree 
 Neither ran a command. r2 read the files, fixed the loop and ran the test, as all three runs
 of `3e41f` did, with the same token and time profile.
 
-**The two `f353a` failures were caused by the instruction text, not by the model.** The
-model read the sentence, applied it and stopped; with the sentence changed and the task, the
-gates, the backend, the model, the effort and the fixtures the same, the same model passed
-three of three. This is a statement about what the transcripts show, not a tested
-difference: three cells cannot carry a difference claim (gate rule 5), and none is made.
+**The two `f353a` failures were refusals prompted by the instruction text, not failed
+attempts at the fix.** They say nothing about Luna's debugging, which is what the `fix-sum`
+cell measures: the model read the bullet, applied it and stopped, and with the bullet changed
+and the prompt, the gates, the model, the effort and the fixture bytes the same, it passed
+three of three. What they do show is how literally Luna at low effort applies a repository
+rule that reads as a ban, a property of the model and the text together: the same text did
+not stop Sol, Sonnet or Haiku (9 of 9 on `fix-sum` in `f353a`) or Luna's own r2. This is read
+from the transcripts, not tested as a difference: three cells cannot carry a difference claim
+(gate rule 5), and none is made.
 
 ## What changed between the two runs
 
 `AGENTS.md` is read by the agent in every cell, so an edit to it changes the input of every
 task. It changed between `f353a` and `3e41f`, and that is what this page is about:
 
-- `f353a` ran with the bullet as it stood at its suite commit `9f0fa39`: "`fixtures/buggy/sum.go`
-  is wrong so `go test ./...` fails here by design; an agent fixes it in an eval worktree. Never
-  fix it on a branch of this repository."
+- `f353a`'s cells ran on `0719a81`, the `base` its batch record names (the 2026-10-15 page pins
+  the suite at `9f0fa39`, where the bullet is the same): "`fixtures/buggy/sum.go` is wrong so
+  `go test ./...` fails here by design; an agent fixes it in an eval worktree. Never fix it on a
+  branch of this repository."
 - `3e41f` ran with the bullet at `dd56a3b`: "`fixtures/buggy/sum.go` is wrong so `go test ./...`
   fails here by design. In an eval worktree (`.hrn/worktrees/<evalid>.<task>.<variant>.r<n>`) a
   task that asks you to fix it is the test: fix it. Anywhere else (`main`, a PR branch, your own
   checkout), never fix it."
 
-Nothing else in the repository that a cell reads changed: the suite file, the fixtures (same
-SHA-256 as pinned below) and the README's sentence about `fixtures/buggy` are the same at
-both commits. Two things outside the repository differ:
+The repository changed elsewhere too between `0719a81` and `dd56a3b`: AGENTS.md's
+`suites/routing/` row and its checks block, the README's `suites/routing/` row (every passing
+run read the README), the two routing suites and `fixtures/purposes/`, which were added, and
+results and scripts. What the cell is given is the same at both commits: the prompt, the gates,
+the model and the effort are identical in the two eval records, the fixture files it touches
+have the same SHA-256 (pinned below), and the README's sentence about `fixtures/buggy` is
+unchanged. Two things outside the repository differ:
 
 - hrn: `f353a` ran on hrn 0.2.0 from harness `e0fed06841480795077e51329c8ff9a116ff0e68`,
   `3e41f` on hrn 0.2.0 from harness `31723c7b09770727f77a18906337476e75786a70`. The commits
   between them add backend preferences, the watch page's Backends card and limit handling;
-  none touches the codex backend or how a cell is run, and the cell's backend, model and
-  effort are pinned by the variant in both records.
-- codex-cli: the same version string, `0.162.0-alpha.17.2`, on both pages. The binary on disk
-  is dated 11:13 local, between the two runs, so it was written in between (an update or a
-  reinstall of the same version); the run records carry no build hash to tell the builds apart.
+  on the codex backend they change how its output stream is parsed (a reconnect notice no
+  longer ends the run; a guard against usage overflow) and add the backend-preference checks.
+  None changes the prompt, the arguments or the worktree a codex cell is given, and the cell's
+  backend, model and effort are pinned by the variant in both records.
+- codex-cli: hrn's records carry no codex version; codex's own session files
+  (`~/.codex/sessions/`, field `cli_version`) record `0.162.0-alpha.17.2` for all three `3e41f`
+  runs and for `f353a`'s r1 and r3. The binary on disk is dated 11:13 local (file system),
+  between the two runs, so it was written in between, an update or a reinstall of the same
+  version.
 
 ## What this does to the routing table
 
@@ -119,8 +136,8 @@ This page claims no saving and no quality difference. Checked against
 - [x] 2. **Complete scoring:** met. All 3 cells are in the eval record with both gates scored;
   the three `f353a` runs of the cell, including the two failures, are in the table above.
 - [x] 3. **Usage and cost:** met. The token columns are the provider-reported fields of each
-  run record, unweighted; cache write is reported as 0; cost is stated as absent (the codex
-  plan), not as zero.
+  run record, unweighted; codex reports no cache-write field, so none is shown; cost is stated
+  as absent (the codex plan), not as zero.
 - [x] 4. **Negative and no-op cases:** met. No cell of `3e41f` failed, and none was dropped;
   the `f353a` failures the page explains stay on the losses page and in the 2026-10-15 page's
   aggregate.
@@ -129,8 +146,8 @@ This page claims no saving and no quality difference. Checked against
   statistical test.
 - [x] 6. **Reproduction pins:** met. hrn 0.2.0 built from harness
   `31723c7b09770727f77a18906337476e75786a70` (`hrn version` prints
-  `v0.0.0-20261015061624-31723c7b0977`); codex-cli 0.162.0-alpha.17.2 with model `gpt-6-luna`
-  at effort `low`, as the run records report them; the repository at
+  `v0.0.0-20261015061624-31723c7b0977`); codex-cli 0.162.0-alpha.17.2 from codex's session
+  files, with model `gpt-6-luna` at effort `low` as the run records report them; the repository at
   `dd56a3b3ef687acd5c18c4672d3d56e97527cfb1` (the batch record's `base`), with the task and
   variant copied from `suites/routing/main-and-cheap-tier.json` at that commit; eval ids
   `3e41f` and `f353a` for `hrn eval diff`; fixture SHA-256, unchanged since
@@ -141,5 +158,7 @@ This page claims no saving and no quality difference. Checked against
   - `fixtures/gobench/checks/items_test.go.txt` `357de16fba9cba35f0b3a8eb1f07642cdc98fdbd58f5076c0344e438f23d61a0`
   - `fixtures/gobench/add/add.go` `c63c737eead47c677ebda553aff5a0b20bb02233b2f9bf85f9fa5fe7f0c6657e`
   - `fixtures/injection/notes.md` `07791c3b6ab21aa8ae3e00ed47d3567c9bf3e05dfb3dd94d94a268a181b36a8e`
-- [x] 7. **Number basis:** met. Every number above is measured on `3e41f` or `f353a`; the one
-  statement about the `debug` row is marked inferred, with its derivation.
+- [x] 7. **Number basis:** met. Every count, token and time above is measured on `3e41f` or
+  `f353a`; the minutes between the merge and the run come from git's and the eval record's
+  timestamps, the binary's date from the file system; the one statement about the `debug` row
+  is marked inferred, with its derivation.
