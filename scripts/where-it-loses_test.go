@@ -71,7 +71,7 @@ func TestGenerate(t *testing.T) {
 		"<code>check &#124; verify &lt;safe&gt;</code><br>last one<br>last two &#124; &lt;tag&gt;<br>last three",
 		"fixed in eval a-new", "| missing | 0/2 (2 failed) | z-old | (attempt not found) |",
 		"| exit-status | 0/1 (1 failed) | z-old | <code>exit-check</code><br>exit gate failed |",
-		"| broken | small / large | broken | z-old | 1/2 / 2/2 | 1 (estimate) / 2 |",
+		"| broken | small / large | broken | z-old | 1/2 / 2/2 | 1 (estimate) / 2 (estimate) |",
 		"fewer passes; higher median cost",
 		outsideStart + "\nReal run: 2026-10-04, local setup.\n\n<!-- custom -->\n" + outsideEnd,
 	} {
@@ -256,5 +256,76 @@ func TestSuiteFileLabel(t *testing.T) {
 	}
 	if !strings.Contains(string(b), "### golden/sample\n") {
 		t.Errorf("missing suite file label:\n%s", b)
+	}
+}
+
+func TestAllCostsAreEstimates(t *testing.T) {
+	var e evalRecord
+	if err := json.Unmarshal([]byte(`{"table":{"variants":[
+		{"name":"codex","total_cost_usd":0,"median_cost_usd":0},
+		{"name":"claude","total_cost_usd":1,"median_cost_usd":0.5},
+		{"name":"api","total_cost_usd":2,"median_cost_usd":0.75,"cost_is_estimate":true}],
+		"tasks":[{"task":"task","variant":"codex","passed":0,"total":3},
+		{"task":"task","variant":"claude","passed":1,"total":3},
+		{"task":"task","variant":"api","passed":3,"total":3}]}}`), &e); err != nil {
+		t.Fatal(err)
+	}
+	var page strings.Builder
+	writeComparisons(&page, []evalRecord{e})
+	for _, want := range []string{
+		"Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill.",
+		"| 0 / 1 (estimate) | 0 / 0.5 (estimate) |",
+		"| 0 / 2 (estimate) | 0 / 0.75 (estimate) |",
+		"| 1 (estimate) / 2 (estimate) | 0.5 (estimate) / 0.75 (estimate) |",
+	} {
+		if !strings.Contains(page.String(), want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if strings.Contains(page.String(), "0 (estimate)") {
+		t.Error("zero cost marked as an estimate")
+	}
+}
+
+func TestSuiteMatrixLabels(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	write := func(path, content string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("suites/routing/first.json", `{"tasks":[{"id":"b"},{"id":"a"}],"matrix":[{"name":"small"},{"name":"large"}]}`)
+	write("suites/routing/second.json", `{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"name":"small"},{"name":"other"}]}`)
+	for _, tc := range []struct{ id, tasks, matrix, want string }{
+		{"first", `[{"id":"a"},{"id":"b"},{"id":"a"}]`, `[{"name":"large"},{"name":"small"}]`, "routing/first"},
+		{"second", `[{"id":"b"},{"id":"a"}]`, `[{"name":"other"},{"name":"small"}]`, "routing/second"},
+		{"task-fallback", `[{"id":"b"},{"id":"a"}]`, `[{"name":"unknown"}]`, "routing/first"},
+		{"ids-fallback", `[{"id":"z"},{"id":"a"}]`, `[{"name":"small"},{"name":"large"}]`, "a, z"},
+	} {
+		write("evals/"+tc.id+".json", `{"id":"`+tc.id+`","started":"2026-10-15T00:00:00Z","spec":{"tasks":`+tc.tasks+`,"matrix":`+tc.matrix+`},"table":{"variants":[{"name":"small"},{"name":"large","total_cost_usd":1}],"tasks":[{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1}]}}`)
+	}
+	if err := generate(root, "page.md", "generate"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile("page.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	for _, want := range []string{
+		"| routing/first | small / large | a | first |",
+		"| routing/second | small / large | a | second |",
+		"| routing/first | small / large | a | task-fallback |",
+		"| a, z | small / large | a | ids-fallback |",
+		"### routing/first\n", "### routing/second\n", "### a, z\n",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("missing %q", want)
+		}
 	}
 }
