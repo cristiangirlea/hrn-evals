@@ -309,6 +309,19 @@ func TestSuiteMatrixLabels(t *testing.T) {
 	} {
 		write("evals/"+tc.id+".json", `{"id":"`+tc.id+`","started":"2026-10-15T00:00:00Z","spec":{"tasks":`+tc.tasks+`,"matrix":`+tc.matrix+`},"table":{"variants":[{"name":"small"},{"name":"large","total_cost_usd":1}],"tasks":[{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1}]}}`)
 	}
+	// Two suites share a task set and differ only in an unnamed variant. The
+	// key holds the name hrn gives it, codex-m1, so the record matches the file
+	// that defines its variant rather than the first file with its task set.
+	write("suites/routing/unnamed-claude.json", `{"tasks":[{"id":"c"}],"matrix":[{"backend":"claude"}]}`)
+	write("suites/routing/unnamed-codex.json", `{"tasks":[{"id":"c"}],"matrix":[{"backend":"codex","model":"m1"}]}`)
+	write("evals/unnamed.json", `{"id":"unnamed","started":"2026-10-15T00:00:00Z","spec":{"tasks":[{"id":"c"}],"matrix":[{"backend":"codex","model":"m1"}]},"table":{"variants":[{"name":"codex-m1"}],"tasks":[{"task":"c","variant":"codex-m1","total":1}]}}`)
+	var unnamed evalRecord
+	if err := readJSON("evals/unnamed.json", &unnamed); err != nil {
+		t.Fatal(err)
+	}
+	if key := unnamed.labelKey(); key != (suiteKey{"c", `["codex-m1"]`}) {
+		t.Errorf("labelKey = %+v, want the derived variant name", key)
+	}
 	if err := generate(root, "page.md", "generate"); err != nil {
 		t.Fatal(err)
 	}
@@ -323,10 +336,14 @@ func TestSuiteMatrixLabels(t *testing.T) {
 		"| routing/first | small / large | a | task-fallback |",
 		"| a, z | small / large | a | ids-fallback |",
 		"### routing/first\n", "### routing/second\n", "### a, z\n",
+		"### routing/unnamed-codex\n", "| c | 0/1 (1 failed) | unnamed |",
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q", want)
 		}
+	}
+	if strings.Contains(page, "unnamed-claude") {
+		t.Error("the record took the first file with its task set: the key holds the raw variant name")
 	}
 }
 
@@ -355,7 +372,6 @@ func TestSingleCellRerunFix(t *testing.T) {
 		{"gate moved into the task", "2026-10-02T00:00:00Z", top, `[{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20,"gate":["go test ./a"]}]`, `[` + variant + `]`, ""},
 		{"task field dropped", "2026-10-02T00:00:00Z", top, `[{"id":"a","prompt":"PRIVATE PROMPT"}]`, `[` + variant + `]`, ""},
 		{"other model under the same name", "2026-10-02T00:00:00Z", top, `[` + task + `]`, `[{"name":"small","model":"m3","effort":"low"}]`, ""},
-		{"variant missing", "2026-10-02T00:00:00Z", top, `[` + task + `]`, `[{"name":"large","model":"m2"}]`, ""},
 		{"other top-level gate", "2026-10-02T00:00:00Z", `"mode":"yolo","gate":["go test ./b"],"backend":"codex"`, `[` + task + `]`, `[` + variant + `]`, ""},
 		{"top-level gate dropped", "2026-10-02T00:00:00Z", `"mode":"yolo","backend":"codex"`, `[` + task + `]`, `[` + variant + `]`, ""},
 		{"other top-level mode", "2026-10-02T00:00:00Z", `"mode":"auto","gate":["go test ./a"],"backend":"codex"`, `[` + task + `]`, `[` + variant + `]`, ""},
@@ -364,16 +380,22 @@ func TestSingleCellRerunFix(t *testing.T) {
 		{"ran before the failure", "2026-09-30T00:00:00Z", top, `[` + task + `]`, `[` + variant + `]`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			later := decode(`{"id":"rerun","started":"` + tc.started + `","spec":{"dir":"/rerun","parallel":1,"repeats":1,` + tc.top + `,"tasks":` + tc.tasks + `,"matrix":` + tc.matrix + `},"table":{"tasks":[{"task":"a","variant":"small","passed":3,"total":3}]}}`)
+			later := decode(`{"id":"rerun","started":"` + tc.started + `","spec":{"dir":"/rerun","parallel":1,"repeats":1,` + tc.top + `,"tasks":` + tc.tasks + `,"matrix":` + tc.matrix + `},"table":{"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`)
 			if got := fixedIn([]evalRecord{later}, old, failing); got != tc.want {
 				t.Errorf("fixedIn = %q, want %q", got, tc.want)
 			}
 		})
 	}
 	// A re-run that still fails a repetition is not a fix, whatever its spec.
-	partial := decode(`{"id":"partial","started":"2026-10-02T00:00:00Z","spec":{` + top + `,"tasks":[` + task + `],"matrix":[` + variant + `]},"table":{"tasks":[{"task":"a","variant":"small","passed":2,"total":3}]}}`)
+	partial := decode(`{"id":"partial","started":"2026-10-02T00:00:00Z","spec":{"repeats":3,` + top + `,"tasks":[` + task + `],"matrix":[` + variant + `]},"table":{"tasks":[{"task":"a","variant":"small","passed":2,"total":3}]}}`)
 	if got := fixedIn([]evalRecord{partial}, old, failing); got != "" {
 		t.Errorf("partial re-run counted as a fix: %q", got)
+	}
+	// A later eval whose matrix lacks the variant defines no such cell. Its
+	// table has no row for it either, so sameCell is asked directly.
+	missing := decode(`{"id":"missing","started":"2026-10-02T00:00:00Z","spec":{"repeats":1,` + top + `,"tasks":[` + task + `],"matrix":[{"name":"large","model":"m2"}]},"table":{"tasks":[{"task":"a","variant":"large","passed":1,"total":1}]}}`)
+	if sameCell(old, missing, failing) {
+		t.Error("a matrix without the variant counted as the same cell")
 	}
 }
 
@@ -387,11 +409,12 @@ func TestUnnamedVariantRerunFix(t *testing.T) {
 		return e
 	}
 	// hrn names a variant without a name backend[-model][-effort], and the
-	// results table carries that name.
-	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"},{"backend":"claude"}]}}`)
+	// results table carries that name; one without a backend either is -m1.
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"},{"backend":"claude"},{"model":"m1"}]}}`)
 	for _, tc := range []struct{ name, variant, matrix, want string }{
 		{"backend, model and effort", "codex-m1-low", `[{"backend":"codex","model":"m1","effort":"low"}]`, "fixed in eval rerun"},
 		{"backend alone", "claude", `[{"backend":"claude"}]`, "fixed in eval rerun"},
+		{"no backend", "-m1", `[{"model":"m1"}]`, "fixed in eval rerun"},
 		{"other effort under the same backend and model", "codex-m1-low", `[{"backend":"codex","model":"m1","effort":"high"}]`, ""},
 		// Spelling the name out defines the variant differently: entries are
 		// compared, not effective cells.
@@ -424,7 +447,7 @@ func TestGenerateSingleCellRerun(t *testing.T) {
 	const cell = `"tasks":[{"id":"a","prompt":"PRIVATE PROMPT"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"}]`
 	write("evals/old.json", `{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"dir":"/old","parallel":2,"repeats":3,`+top+`,"tasks":[{"id":"a","prompt":"PRIVATE PROMPT"},{"id":"b","prompt":"PRIVATE OTHER"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"},{"name":"large","backend":"codex","model":"m2"}]},"table":{"variants":[{"name":"codex-m1-low"},{"name":"large"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":1,"total":3},{"task":"a","variant":"large","passed":3,"total":3},{"task":"b","variant":"codex-m1-low","passed":3,"total":3},{"task":"b","variant":"large","passed":3,"total":3}]}}`)
 	// The cell alone under another top-level gate passes, but is no fix.
-	write("evals/other-gate.json", `{"id":"other-gate","started":"2026-10-02T00:00:00Z","spec":{"dir":"/other","mode":"yolo","gate":["true"],"max_turns":20,`+cell+`},"table":{"variants":[{"name":"codex-m1-low"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":3,"total":3}]}}`)
+	write("evals/other-gate.json", `{"id":"other-gate","started":"2026-10-02T00:00:00Z","spec":{"dir":"/other","parallel":1,"repeats":3,"mode":"yolo","gate":["true"],"max_turns":20,`+cell+`},"table":{"variants":[{"name":"codex-m1-low"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":3,"total":3}]}}`)
 	// The cell alone from another directory, with other parallel and repeats, is.
 	write("evals/rerun.json", `{"id":"rerun","started":"2026-10-03T00:00:00Z","spec":{"dir":"/rerun","parallel":1,"repeats":1,`+top+`,`+cell+`},"table":{"variants":[{"name":"codex-m1-low"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":1,"total":1}]}}`)
 	out := filepath.Join(home, "page.md")
@@ -459,7 +482,7 @@ func TestOneTaskSuiteRerunFix(t *testing.T) {
 	// matrix names tell that re-run from a run of the suite, so that it is
 	// judged as a cell, top-level fields included.
 	const task = `{"id":"x","prompt":"PRIVATE PROMPT"}`
-	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"claude","backend":"claude"},{"name":"codex","backend":"codex"}]}}`)
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"repeats":3,"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"claude","backend":"claude"},{"name":"codex","backend":"codex"}]}}`)
 	failing := taskResult{Task: "x", Variant: "codex", Total: 3}
 	for _, tc := range []struct{ name, spec, want string }{
 		{"cell alone", `{"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, "fixed in eval later"},
@@ -469,10 +492,77 @@ func TestOneTaskSuiteRerunFix(t *testing.T) {
 		{"whole suite under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":3,"total":3}]}}`)
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":1,"total":1}]}}`)
 			if got := fixedIn([]evalRecord{later}, old, failing); got != tc.want {
 				t.Errorf("fixedIn = %q, want %q", got, tc.want)
 			}
 		})
+	}
+	// With unnamed variants the key holds the names hrn gives them, so the same
+	// holds: the cell alone is judged as a cell, and a run of the whole suite is
+	// trusted even when it spells the names out. Keyed by the raw names, every
+	// unnamed matrix was one suite, and the two cases came out the other way.
+	unnamed := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"repeats":3,"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"backend":"claude"},{"backend":"codex"}]}}`)
+	for _, tc := range []struct{ name, spec, want string }{
+		{"unnamed cell alone under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"backend":"codex"}]}`, ""},
+		{"whole suite with the names spelled out, under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":1,"total":1}]}}`)
+			if got := fixedIn([]evalRecord{later}, unnamed, failing); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSpecNullOrNotObject(t *testing.T) {
+	home := t.TempDir()
+	write := func(path, content string) {
+		t.Helper()
+		path = filepath.Join(home, path)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// hrn writes the spec as an object. A null spec decodes to an empty one that
+	// defines no cell and shares its suite key only with other null specs, so
+	// the record is read and never credits a cell of a spec; a string or an
+	// array does not decode, and the record is skipped.
+	write("evals/old.json", `{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"repeats":1,"tasks":[{"id":"a","prompt":"PRIVATE PROMPT"}],"matrix":[{"name":"small","backend":"codex"}]},"table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","total":1}]}}`)
+	write("evals/null-spec.json", `{"id":"null-spec","started":"2026-10-02T00:00:00Z","spec":null,"table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`)
+	write("evals/string-spec.json", `{"id":"string-spec","started":"2026-10-02T00:00:00Z","spec":"PRIVATE SPEC","table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`)
+	write("evals/array-spec.json", `{"id":"array-spec","started":"2026-10-02T00:00:00Z","spec":[],"table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`)
+	var null evalRecord
+	if err := readJSON(filepath.Join(home, "evals", "null-spec.json"), &null); err != nil {
+		t.Fatal(err)
+	}
+	if len(null.Spec.Tasks) != 0 || len(null.Spec.Matrix) != 0 || null.Spec.Rest != "{}" {
+		t.Errorf("null spec decoded as %+v, want an empty spec", null.Spec)
+	}
+	out := filepath.Join(home, "page.md")
+	if err := generate(home, out, "generate"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	for _, want := range []string{
+		"Evals read: 2. Unreadable or invalid evals skipped: 2.",
+		"| a | 0/1 (1 failed) | old | (gate output not kept) |  |\n",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("missing %q in page:\n%s", want, page)
+		}
+	}
+	for _, unwanted := range []string{"fixed in eval", "PRIVATE"} {
+		if strings.Contains(page, unwanted) {
+			t.Errorf("leaked %q", unwanted)
+		}
 	}
 }

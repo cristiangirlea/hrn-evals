@@ -140,7 +140,10 @@ func entry(entries []specEntry, key func(specEntry) string, want string) (string
 // backend, model, effort) from the spec. The rest of those fields, the judge
 // among them, only scores or guards a run, and is compared all the same. A
 // variant without a name is matched by the name hrn gives it,
-// backend[-model][-effort].
+// backend[-model][-effort]. What a cell is given outside the spec is not
+// compared: the home's default backend and the CLI's default model and effort
+// when the variant, the task and the spec all leave them out, the CLI's other
+// settings, hrn's and the CLI's version, and the batch's base commit.
 func sameCell(old, later evalRecord, task taskResult) bool {
 	taskID := func(e specEntry) string { return e.ID }
 	oldTask, ok1 := entry(old.Spec.Tasks, taskID, task.Task)
@@ -239,13 +242,17 @@ type suiteKey struct {
 	tasks, matrix string
 }
 
+// labelKey identifies a suite as suite files are labelled: by its task ID set
+// and the names hrn gives its matrix variants, so that an unnamed variant keys
+// by backend[-model][-effort], the name sameCell and the results table use.
 func (e evalRecord) labelKey() suiteKey {
 	names := make([]string, 0, len(e.Spec.Matrix))
 	seen := make(map[string]bool)
 	for _, v := range e.Spec.Matrix {
-		if !seen[v.Name] {
-			names = append(names, v.Name)
-			seen[v.Name] = true
+		name := v.variantName()
+		if !seen[name] {
+			names = append(names, name)
+			seen[name] = true
 		}
 	}
 	sort.Strings(names)
@@ -426,7 +433,7 @@ func generate(home, out, command string) error {
 		date = latest.UTC().Format("2006-01-02")
 	}
 	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d.\n\n", date, cell(command), len(evals), skipped)
-	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
+	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
 		t taskResult
