@@ -27,6 +27,9 @@ type evalRecord struct {
 }
 
 type evalSpec struct {
+	Matrix []struct {
+		Name string `json:"name"`
+	} `json:"matrix"`
 	Tasks []struct {
 		ID string `json:"id"`
 	} `json:"tasks"`
@@ -37,7 +40,6 @@ type variant struct {
 	Cost       float64 `json:"total_cost_usd"`
 	MedianCost float64 `json:"median_cost_usd"`
 	Tokens     float64 `json:"median_context_tokens"`
-	Estimate   bool    `json:"cost_is_estimate"`
 }
 
 type taskResult struct {
@@ -118,8 +120,26 @@ func (e evalRecord) suiteLabel() string {
 	return e.suite()
 }
 
-func suiteLabels() (map[string]string, error) {
-	labels := make(map[string]string)
+type suiteKey struct {
+	tasks, matrix string
+}
+
+func (e evalRecord) labelKey() suiteKey {
+	names := make([]string, 0, len(e.Spec.Matrix))
+	seen := make(map[string]bool)
+	for _, v := range e.Spec.Matrix {
+		if !seen[v.Name] {
+			names = append(names, v.Name)
+			seen[v.Name] = true
+		}
+	}
+	sort.Strings(names)
+	matrix, _ := json.Marshal(names)
+	return suiteKey{e.suite(), string(matrix)}
+}
+
+func suiteLabels() (map[suiteKey]string, error) {
+	labels := make(map[suiteKey]string)
 	err := filepath.WalkDir("suites", func(path string, entry fs.DirEntry, err error) error {
 		if os.IsNotExist(err) && path == "suites" {
 			return nil
@@ -134,13 +154,15 @@ func suiteLabels() (map[string]string, error) {
 		if err := readJSON(path, &spec); err != nil {
 			return err
 		}
-		key := (evalRecord{Spec: spec}).suite()
+		key := (evalRecord{Spec: spec}).labelKey()
 		label, err := filepath.Rel("suites", path)
 		if err != nil {
 			return err
 		}
-		if _, exists := labels[key]; !exists {
-			labels[key] = strings.TrimSuffix(filepath.ToSlash(label), ".json")
+		for _, key := range []suiteKey{key, {tasks: key.tasks}} {
+			if _, exists := labels[key]; !exists {
+				labels[key] = strings.TrimSuffix(filepath.ToSlash(label), ".json")
+			}
 		}
 		return nil
 	})
@@ -253,7 +275,10 @@ func generate(home, out, command string) error {
 			skipped++
 			continue
 		}
-		e.SuiteLabel = labels[e.suite()]
+		e.SuiteLabel = labels[e.labelKey()]
+		if e.SuiteLabel == "" {
+			e.SuiteLabel = labels[suiteKey{tasks: e.suite()}]
+		}
 		evals = append(evals, e)
 		if e.Started.After(latest) {
 			latest = e.Started
@@ -278,7 +303,7 @@ func generate(home, out, command string) error {
 		date = latest.UTC().Format("2006-01-02")
 	}
 	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d.\n\n", date, cell(command), len(evals), skipped)
-	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Suites are identified by their sorted task ID set and labelled by the matching file under suites/, falling back to joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
+	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
 		t taskResult
@@ -296,6 +321,9 @@ func generate(home, out, command string) error {
 		if a.e.suite() != b.e.suite() {
 			return a.e.suite() < b.e.suite()
 		}
+		if a.e.suiteLabel() != b.e.suiteLabel() {
+			return a.e.suiteLabel() < b.e.suiteLabel()
+		}
 		if a.t.Variant != b.t.Variant {
 			return a.t.Variant < b.t.Variant
 		}
@@ -306,8 +334,8 @@ func generate(home, out, command string) error {
 	})
 	suite, variantName := "", ""
 	for _, f := range failures {
-		if f.e.suite() != suite {
-			suite = f.e.suite()
+		if f.e.suiteLabel() != suite {
+			suite = f.e.suiteLabel()
 			variantName = ""
 			fmt.Fprintf(&page, "\n### %s\n", cell(f.e.suiteLabel()))
 		}
@@ -340,7 +368,7 @@ func cheaper(a, b variant) bool {
 }
 
 func writeComparisons(page *strings.Builder, evals []evalRecord) {
-	page.WriteString("\n## Comparisons\n\nCheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Estimated costs are marked. Cost overruns mean higher median cost per attempt despite a lower total. Only tasks present for both variants are compared.\n")
+	page.WriteString("\n## Comparisons\n\nCheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill. Cost overruns mean higher median cost per attempt despite a lower total. Only tasks present for both variants are compared.\n")
 	type comparison struct {
 		suite, task, id string
 		low, high       variant
@@ -399,12 +427,12 @@ func writeComparisons(page *strings.Builder, evals []evalRecord) {
 	}
 	page.WriteString("\n| Suite | Cheaper variant / other | Task | Eval | Passed/total (cheaper / other) | Total USD (cheaper / other) | Median USD (cheaper / other) | Median context tokens (cheaper / other) | Loss |\n|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
-		fmt.Fprintf(page, "| %s | %s / %s | %s | %s | %d/%d / %d/%d | %s / %s | %s / %s | %g / %g | %s |\n", cell(r.suite), cell(r.low.Name), cell(r.high.Name), cell(r.task), cell(r.id), r.a.Passed, r.a.Total, r.b.Passed, r.b.Total, cost(r.low.Cost, r.low.Estimate), cost(r.high.Cost, r.high.Estimate), cost(r.low.MedianCost, r.low.Estimate), cost(r.high.MedianCost, r.high.Estimate), r.low.Tokens, r.high.Tokens, r.reason)
+		fmt.Fprintf(page, "| %s | %s / %s | %s | %s | %d/%d / %d/%d | %s / %s | %s / %s | %g / %g | %s |\n", cell(r.suite), cell(r.low.Name), cell(r.high.Name), cell(r.task), cell(r.id), r.a.Passed, r.a.Total, r.b.Passed, r.b.Total, cost(r.low.Cost), cost(r.high.Cost), cost(r.low.MedianCost), cost(r.high.MedianCost), r.low.Tokens, r.high.Tokens, r.reason)
 	}
 }
-func cost(n float64, estimate bool) string {
+func cost(n float64) string {
 	s := strconv.FormatFloat(n, 'f', -1, 64)
-	if estimate {
+	if n != 0 {
 		s += " (estimate)"
 	}
 	return s
