@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -154,11 +155,17 @@ func sameCell(old, later evalRecord, task taskResult) bool {
 }
 
 type variant struct {
-	Name       string  `json:"name"`
-	Cost       float64 `json:"total_cost_usd"`
-	MedianCost float64 `json:"median_cost_usd"`
-	Tokens     float64 `json:"median_context_tokens"`
+	Name           string  `json:"name"`
+	Cost           float64 `json:"total_cost_usd"`
+	MedianCost     float64 `json:"median_cost_usd"`
+	Tokens         float64 `json:"median_context_tokens"`
+	CostIsEstimate bool    `json:"cost_is_estimate"`
 }
+
+// unpriced reports a variant hrn had no price for: a zero cost that hrn did
+// not estimate, as codex's runs read when hrn lacks its model's price. A zero
+// that hrn estimated, a local model's, is a price.
+func (v variant) unpriced() bool { return v.Cost == 0 && !v.CostIsEstimate }
 
 type taskResult struct {
 	Task    string `json:"task"`
@@ -176,7 +183,6 @@ type batchRecord struct {
 			} `json:"result"`
 			Gates []struct {
 				Command  string `json:"command"`
-				OK       *bool  `json:"ok"`
 				ExitCode *int   `json:"exit_code"`
 				Output   string `json:"output"`
 			} `json:"gates"`
@@ -205,7 +211,7 @@ func main() {
 		os.Exit(1)
 	}
 	command := "scripts/where-it-loses.sh"
-	flag.Visit(func(f *flag.Flag) { command += " --" + f.Name + " " + shellQuote(f.Value.String()) })
+	flag.Visit(func(f *flag.Flag) { command += " --" + f.Name + " " + shellQuote(shownPath(f.Value.String())) })
 	if err := generate(*homeFlag, *out, command); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -213,7 +219,37 @@ func main() {
 }
 
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'" }
+
+// shownPath keeps a local path off the page: an absolute or home-relative
+// path (Unix or Windows, whatever the OS the page is made on) is shown as
+// .../ and its last element. A relative path says nothing about the machine.
+func shownPath(p string) string {
+	local := strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) || strings.HasPrefix(p, "~") ||
+		len(p) >= 3 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')
+	if !local {
+		return p
+	}
+	trimmed := strings.TrimRight(p, `/\`)
+	return ".../" + trimmed[strings.LastIndexAny(trimmed, `/\`)+1:]
+}
+
+// controls matches terminal escape sequences a test runner may print: CSI
+// (colours, cursor moves), OSC (titles, links) and the other two-byte ones.
+var controls = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)|[@-Z\\-_])`)
+
 func cell(s string) string {
+	s = controls.ReplaceAllString(s, "")
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t':
+			return ' '
+		case r == '\n' || r == '\r':
+			return r
+		case r < 0x20 || r == 0x7f || r >= 0x80 && r <= 0x9f:
+			return -1
+		}
+		return r
+	}, s)
 	s = html.EscapeString(s)
 	s = strings.NewReplacer("|", "&#124;", "\r", "", "\n", "<br>", "`", "&#96;", "*", "&#42;", "_", "&#95;", "[", "&#91;", "]", "&#93;", "\\", "&#92;").Replace(s)
 	return s
@@ -260,8 +296,31 @@ func (e evalRecord) labelKey() suiteKey {
 	return suiteKey{e.suite(), string(matrix)}
 }
 
-func suiteLabels() (map[suiteKey]string, error) {
+// suiteIndex is what suites/ holds: each suite's label by its key and by its
+// task-ID set, and every task ID a suite defines.
+type suiteIndex struct {
+	labels map[suiteKey]string
+	tasks  map[string]bool
+}
+
+// ours reports whether an eval ran this repository's work: whether any of its
+// task IDs is defined by a suite here. The hrn home is shared, so other
+// projects' evals are in it too; with no suites to tell by, every eval is ours.
+func (s suiteIndex) ours(e evalRecord) bool {
+	if len(s.tasks) == 0 {
+		return true
+	}
+	for _, task := range e.Spec.Tasks {
+		if s.tasks[task.ID] {
+			return true
+		}
+	}
+	return false
+}
+
+func suiteLabels() (suiteIndex, error) {
 	labels := make(map[suiteKey]string)
+	tasks := make(map[string]bool)
 	err := filepath.WalkDir("suites", func(path string, entry fs.DirEntry, err error) error {
 		if os.IsNotExist(err) && path == "suites" {
 			return nil
@@ -275,6 +334,9 @@ func suiteLabels() (map[suiteKey]string, error) {
 		var spec evalSpec
 		if err := readJSON(path, &spec); err != nil {
 			return err
+		}
+		for _, task := range spec.Tasks {
+			tasks[task.ID] = true
 		}
 		key := (evalRecord{Spec: spec}).labelKey()
 		label, err := filepath.Rel("suites", path)
@@ -295,7 +357,7 @@ func suiteLabels() (map[suiteKey]string, error) {
 		}
 		return nil
 	})
-	return labels, err
+	return suiteIndex{labels, tasks}, err
 }
 
 func readJSON(path string, v any) error {
@@ -339,13 +401,9 @@ func gateMessage(home string, e evalRecord, t taskResult) string {
 				noGate = "(no gate ran: " + cell(status) + ")"
 			}
 			for _, g := range attempt.Gates {
-				// Older saved batches used exit_code instead of ok. Unknown
-				// gate status is not evidence of a failing gate.
-				failed := g.OK != nil && !*g.OK
-				if g.OK == nil && g.ExitCode != nil {
-					failed = *g.ExitCode != 0
-				}
-				if !failed {
+				// hrn writes exit_code for every gate, -1 when it was killed. A
+				// gate without one is not evidence of a failure.
+				if g.ExitCode == nil || *g.ExitCode == 0 {
 					continue
 				}
 				lines := strings.Split(strings.TrimRight(strings.ReplaceAll(g.Output, "\r\n", "\n"), "\n"), "\n")
@@ -392,16 +450,17 @@ func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 }
 
 func generate(home, out, command string) error {
-	labels, err := suiteLabels()
+	suites, err := suiteLabels()
 	if err != nil {
 		return err
 	}
+	labels := suites.labels
 	entries, err := os.ReadDir(filepath.Join(home, "evals"))
 	if err != nil {
 		return err
 	}
 	var evals []evalRecord
-	skipped := 0
+	skipped, others := 0, 0
 	var latest time.Time
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
@@ -410,6 +469,10 @@ func generate(home, out, command string) error {
 		var e evalRecord
 		if readJSON(filepath.Join(home, "evals", entry.Name()), &e) != nil || e.ID == "" || e.Started.IsZero() {
 			skipped++
+			continue
+		}
+		if !suites.ours(e) {
+			others++
 			continue
 		}
 		e.SuiteLabel = labels[e.labelKey()]
@@ -439,7 +502,7 @@ func generate(home, out, command string) error {
 	if !latest.IsZero() {
 		date = latest.UTC().Format("2006-01-02")
 	}
-	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d.\n\n", date, cell(command), len(evals), skipped)
+	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d. Other projects' evals left out (none of their task IDs is in a suite under suites/): %d.\n\n", date, cell(command), len(evals), skipped, others)
 	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
@@ -493,32 +556,38 @@ func generate(home, out, command string) error {
 	if err := os.WriteFile(out, []byte(page.String()), 0644); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "where-it-loses: read %d evals; skipped %d unreadable or invalid evals\n", len(evals), skipped)
+	fmt.Fprintf(os.Stderr, "where-it-loses: read %d evals; skipped %d unreadable or invalid evals; left out %d of other projects\n", len(evals), skipped, others)
 	return nil
 }
 
 func cheaper(a, b variant) bool {
-	if a.Cost != b.Cost {
+	if a.Cost != b.Cost && !a.unpriced() && !b.unpriced() {
 		return a.Cost < b.Cost
 	}
 	return a.Tokens < b.Tokens
 }
 
 func writeComparisons(page *strings.Builder, evals []evalRecord) {
-	page.WriteString("\n## Comparisons\n\nCheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill. Cost overruns mean higher median cost per attempt despite a lower total. Only tasks present for both variants are compared.\n")
-	type comparison struct {
+	page.WriteString("\n## Comparisons\n\nCheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). A variant with a zero cost that hrn did not estimate is unpriced, since hrn had no price for it: a pair with an unpriced variant is compared on median context tokens alone, and its costs read unpriced. Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill. Fewer passes are listed per shared task. A median cost overrun, a higher median cost per attempt despite a lower total, belongs to the variant pair, so it is listed once per eval and pair. Only tasks present for both variants are compared.\n")
+	type loss struct {
 		suite, task, id string
 		low, high       variant
 		a, b            taskResult
-		reason          string
 	}
-	var rows []comparison
+	type overrun struct {
+		suite, id string
+		low, high variant
+		shared    int
+	}
+	var losses []loss
+	var overruns []overrun
 	for _, e := range evals {
 		for _, a := range e.Table.Variants {
 			for _, b := range e.Table.Variants {
 				if !cheaper(a, b) {
 					continue
 				}
+				shared := 0
 				for _, ta := range e.Table.Tasks {
 					if ta.Variant != a.Name {
 						continue
@@ -527,23 +596,20 @@ func writeComparisons(page *strings.Builder, evals []evalRecord) {
 						if tb.Variant != b.Name || tb.Task != ta.Task {
 							continue
 						}
-						var reasons []string
+						shared++
 						if ta.Passed < tb.Passed {
-							reasons = append(reasons, "fewer passes")
-						}
-						if a.MedianCost > b.MedianCost {
-							reasons = append(reasons, "higher median cost")
-						}
-						if len(reasons) > 0 {
-							rows = append(rows, comparison{e.suiteLabel(), ta.Task, e.ID, a, b, ta, tb, strings.Join(reasons, "; ")})
+							losses = append(losses, loss{e.suiteLabel(), ta.Task, e.ID, a, b, ta, tb})
 						}
 					}
+				}
+				if shared > 0 && !a.unpriced() && !b.unpriced() && a.MedianCost > b.MedianCost {
+					overruns = append(overruns, overrun{e.suiteLabel(), e.ID, a, b, shared})
 				}
 			}
 		}
 	}
-	sort.Slice(rows, func(i, j int) bool {
-		a, b := rows[i], rows[j]
+	sort.Slice(losses, func(i, j int) bool {
+		a, b := losses[i], losses[j]
 		if a.suite != b.suite {
 			return a.suite < b.suite
 		}
@@ -558,16 +624,45 @@ func writeComparisons(page *strings.Builder, evals []evalRecord) {
 		}
 		return a.high.Name < b.high.Name
 	})
-	if len(rows) == 0 {
-		page.WriteString("\nNo cheaper-variant losses or median cost overruns in saved comparisons.\n")
+	sort.Slice(overruns, func(i, j int) bool {
+		a, b := overruns[i], overruns[j]
+		if a.suite != b.suite {
+			return a.suite < b.suite
+		}
+		if a.low.Name != b.low.Name {
+			return a.low.Name < b.low.Name
+		}
+		if a.id != b.id {
+			return a.id < b.id
+		}
+		return a.high.Name < b.high.Name
+	})
+	page.WriteString("\n### Fewer passes\n")
+	if len(losses) == 0 {
+		page.WriteString("\nNo cheaper-variant losses in saved comparisons.\n")
+	} else {
+		page.WriteString("\n| Suite | Cheaper variant / other | Task | Eval | Passed/total (cheaper / other) | Total USD (cheaper / other) | Median context tokens (cheaper / other) |\n|---|---|---|---|---|---|---|\n")
+		for _, r := range losses {
+			fmt.Fprintf(page, "| %s | %s / %s | %s | %s | %d/%d / %d/%d | %s / %s | %g / %g |\n", cell(r.suite), cell(r.low.Name), cell(r.high.Name), cell(r.task), cell(r.id), r.a.Passed, r.a.Total, r.b.Passed, r.b.Total, cost(r.low, r.low.Cost), cost(r.high, r.high.Cost), r.low.Tokens, r.high.Tokens)
+		}
+	}
+	page.WriteString("\n### Median cost overruns\n")
+	if len(overruns) == 0 {
+		page.WriteString("\nNo median cost overruns in saved comparisons.\n")
 		return
 	}
-	page.WriteString("\n| Suite | Cheaper variant / other | Task | Eval | Passed/total (cheaper / other) | Total USD (cheaper / other) | Median USD (cheaper / other) | Median context tokens (cheaper / other) | Loss |\n|---|---|---|---|---|---|---|---|---|\n")
-	for _, r := range rows {
-		fmt.Fprintf(page, "| %s | %s / %s | %s | %s | %d/%d / %d/%d | %s / %s | %s / %s | %g / %g | %s |\n", cell(r.suite), cell(r.low.Name), cell(r.high.Name), cell(r.task), cell(r.id), r.a.Passed, r.a.Total, r.b.Passed, r.b.Total, cost(r.low.Cost), cost(r.high.Cost), cost(r.low.MedianCost), cost(r.high.MedianCost), r.low.Tokens, r.high.Tokens, r.reason)
+	page.WriteString("\n| Suite | Cheaper variant / other | Eval | Shared tasks | Total USD (cheaper / other) | Median USD (cheaper / other) |\n|---|---|---|---|---|---|\n")
+	for _, r := range overruns {
+		fmt.Fprintf(page, "| %s | %s / %s | %s | %d | %s / %s | %s / %s |\n", cell(r.suite), cell(r.low.Name), cell(r.high.Name), cell(r.id), r.shared, cost(r.low, r.low.Cost), cost(r.high, r.high.Cost), cost(r.low, r.low.MedianCost), cost(r.high, r.high.MedianCost))
 	}
 }
-func cost(n float64) string {
+
+// cost shows one of a variant's costs: "unpriced" when hrn had no price for
+// the variant, otherwise the number, marked as an estimate unless it is zero.
+func cost(v variant, n float64) string {
+	if v.unpriced() {
+		return "unpriced"
+	}
 	s := strconv.FormatFloat(n, 'f', -1, 64)
 	if n != 0 {
 		s += " (estimate)"

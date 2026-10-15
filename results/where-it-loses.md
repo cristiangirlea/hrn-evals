@@ -4,7 +4,7 @@ Date: 2026-10-15 (latest saved eval, UTC).
 
 Produced by: <code>scripts/where-it-loses.sh</code>
 
-Evals read: 58. Unreadable or invalid evals skipped: 0.
+Evals read: 51. Unreadable or invalid evals skipped: 0. Other projects' evals left out (none of their task IDs is in a suite under suites/): 7.
 
 Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.
 
@@ -22,7 +22,7 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 
 | Task | Passed/total (failed) | Eval | Gate message | History |
 |---|---|---|---|---|
-| go-rest-items | 0/1 (1 failed) | b123c | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	1.626s<br>FAIL<br>the handler does not meet the contract |  |
+| go-rest-items | 0/1 (1 failed) | b123c | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/gobench/items 1.626s<br>FAIL<br>the handler does not meet the contract |  |
 
 ### routing/main-and-cheap-tier
 
@@ -36,9 +36,9 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 
 | Task | Passed/total (failed) | Eval | Gate message | History |
 |---|---|---|---|---|
-| fix-sum | 1/3 (2 failed) | f353a | <code>go test ./fixtures/buggy/</code><br>FAIL<br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/buggy	0.344s<br>FAIL | fixed in eval 3e41f |
+| fix-sum | 1/3 (2 failed) | f353a | <code>go test ./fixtures/buggy/</code><br>FAIL<br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/buggy 0.344s<br>FAIL | fixed in eval 3e41f |
 | go-explain-goroutines | 1/3 (2 failed) | f353a | <code>test -s fixtures/gobench/GOROUTINES.md &#124;&#124; { echo &#39;GOROUTINES.md is missing or empty&#39;; exit 1; }</code><br>GOROUTINES.md is missing or empty |  |
-| go-rest-items | 2/3 (1 failed) | f353a | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	0.406s<br>FAIL<br>the handler does not meet the contract |  |
+| go-rest-items | 2/3 (1 failed) | f353a | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/gobench/items 0.406s<br>FAIL<br>the handler does not meet the contract |  |
 
 #### sonnet-medium
 
@@ -70,7 +70,7 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 
 | Task | Passed/total (failed) | Eval | Gate message | History |
 |---|---|---|---|---|
-| go-rest-items | 2/3 (1 failed) | 580a2 | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	0.296s<br>FAIL<br>the handler does not meet the contract |  |
+| go-rest-items | 2/3 (1 failed) | 580a2 | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/gobench/items 0.296s<br>FAIL<br>the handler does not meet the contract |  |
 | go-rest-items | 2/3 (1 failed) | 69f1b | (no gate ran: error) |  |
 
 #### granite42-8b
@@ -84,22 +84,14 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 | Task | Passed/total (failed) | Eval | Gate message | History |
 |---|---|---|---|---|
 | go-fib-memo | 1/3 (2 failed) | 86247 | (no gate ran: error) |  |
-| go-rest-items | 0/3 (3 failed) | 86247 | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	0.279s<br>FAIL<br>the handler does not meet the contract |  |
-| go-rest-items | 0/1 (1 failed) | 9b8ab | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	0.274s<br>FAIL<br>the handler does not meet the contract |  |
+| go-rest-items | 0/3 (3 failed) | 86247 | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/gobench/items 0.279s<br>FAIL<br>the handler does not meet the contract |  |
+| go-rest-items | 0/1 (1 failed) | 9b8ab | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/gobench/items 0.274s<br>FAIL<br>the handler does not meet the contract |  |
 
 #### qwen35-9b
 
 | Task | Passed/total (failed) | Eval | Gate message | History |
 |---|---|---|---|---|
-| go-rest-items | 1/3 (2 failed) | 1c393 | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	0.280s<br>FAIL<br>the handler does not meet the contract |  |
-
-### greet
-
-#### sonnet
-
-| Task | Passed/total (failed) | Eval | Gate message | History |
-|---|---|---|---|---|
-| greet | 0/1 (1 failed) | cb867 | <code>grep -qx &#39;hx rocks&#39; greeting.txt &#124;&#124; { echo &#39;greeting.txt must contain exactly the line: hx rocks&#39;; exit 1; }</code><br>greeting.txt must contain exactly the line: hx rocks | fixed in eval 847f6 |
+| go-rest-items | 1/3 (2 failed) | 1c393 | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL github.com/cristiangirlea/hrn-evals/fixtures/gobench/items 0.280s<br>FAIL<br>the handler does not meet the contract |  |
 
 ### golden/greeting
 
@@ -119,17 +111,18 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 
 ## Comparisons
 
-Cheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill. Cost overruns mean higher median cost per attempt despite a lower total. Only tasks present for both variants are compared.
+Cheaper means lower total eval cost, with lower median context tokens breaking equal costs (including zero). A variant with a zero cost that hrn did not estimate is unpriced, since hrn had no price for it: a pair with an unpriced variant is compared on median context tokens alone, and its costs read unpriced. Costs and tokens below are variant-wide, not per-task measurements; zero reported cost is not proof of free execution. Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill. Fewer passes are listed per shared task. A median cost overrun, a higher median cost per attempt despite a lower total, belongs to the variant pair, so it is listed once per eval and pair. Only tasks present for both variants are compared.
 
-| Suite | Cheaper variant / other | Task | Eval | Passed/total (cheaper / other) | Total USD (cheaper / other) | Median USD (cheaper / other) | Median context tokens (cheaper / other) | Loss |
-|---|---|---|---|---|---|---|---|---|
-| routing/codex-first-table | luna-medium / luna-low | go-rest-items | b123c | 0/1 / 1/1 | 0 / 0 | 0 / 0 | 129934 / 146509.5 | fewer passes |
-| routing/main-and-cheap-tier | haiku-low / sonnet-medium | go-explain-goroutines | f353a | 1/3 / 2/3 | 1.1948031 (estimate) / 2.8573514 (estimate) | 0.06453329999999999 (estimate) / 0.14916030000000002 (estimate) | 148824.5 / 137907 | fewer passes |
-| routing/main-and-cheap-tier | luna-low / haiku-low | fix-sum | f353a | 1/3 / 3/3 | 0 / 1.1948031 (estimate) | 0 / 0.06453329999999999 (estimate) | 173318.5 / 148824.5 | fewer passes |
-| routing/main-and-cheap-tier | luna-low / sonnet-medium | fix-sum | f353a | 1/3 / 3/3 | 0 / 2.8573514 (estimate) | 0 / 0.14916030000000002 (estimate) | 173318.5 / 137907 | fewer passes |
-| routing/main-and-cheap-tier | luna-low / sonnet-medium | go-explain-goroutines | f353a | 1/3 / 2/3 | 0 / 2.8573514 (estimate) | 0 / 0.14916030000000002 (estimate) | 173318.5 / 137907 | fewer passes |
-| routing/main-and-cheap-tier | luna-low / haiku-low | go-rest-items | f353a | 2/3 / 3/3 | 0 / 1.1948031 (estimate) | 0 / 0.06453329999999999 (estimate) | 173318.5 / 148824.5 | fewer passes |
-| routing/main-and-cheap-tier | luna-low / sonnet-medium | go-rest-items | f353a | 2/3 / 3/3 | 0 / 2.8573514 (estimate) | 0 / 0.14916030000000002 (estimate) | 173318.5 / 137907 | fewer passes |
+### Fewer passes
+
+| Suite | Cheaper variant / other | Task | Eval | Passed/total (cheaper / other) | Total USD (cheaper / other) | Median context tokens (cheaper / other) |
+|---|---|---|---|---|---|---|
+| routing/codex-first-table | luna-medium / luna-low | go-rest-items | b123c | 0/1 / 1/1 | unpriced / unpriced | 129934 / 146509.5 |
+| routing/main-and-cheap-tier | haiku-low / sonnet-medium | go-explain-goroutines | f353a | 1/3 / 2/3 | 1.1948031 (estimate) / 2.8573514 (estimate) | 148824.5 / 137907 |
+
+### Median cost overruns
+
+No median cost overruns in saved comparisons.
 
 ## Outside reports
 
