@@ -1,0 +1,154 @@
+// Excerpts of internal/batch/batch.go, harness a2a8cf2. Read-only material for the research tasks; not built.
+	Dir      string `json:"dir,omitempty"`      // any path inside the repository; default: the spec file's directory
+	Parallel int    `json:"parallel,omitempty"` // agents at once; default DefaultParallel
+	Backend  string `json:"backend,omitempty"`  // default: api when credentials exist, else claude
+	// Options are the run options every task starts from: model, mode (default
+	// auto; nothing can approve prompts in a batch), the budgets (per attempt),
+	// MCP files (relative to Dir) and the api switches. A task's own override
+	// them field by field.
+	agent.Options
+	AllowDirty bool     `json:"allow_dirty,omitempty"` // start even though tracked files are modified
+	Gate       []string `json:"gate,omitempty"`        // commands that must exit 0 in the worktree after the agent finishes
+	// GateTimeout bounds each gate command; default 15m. A task's own wins.
+	GateTimeout agent.Duration `json:"gate_timeout,omitempty"`
+	Retry       []string       `json:"retry,omitempty"` // backends to try, in order, after a failed attempt
+	// Worktrees is where each task works: WorktreesSlots (the default) or
+	// WorktreesFresh.
+	Worktrees string `json:"worktrees,omitempty"`
+	Tasks     []Task `json:"tasks"`
+}
+
+const (
+	// WorktreesSlots runs each task in a reusable slot of internal/ws, leased
+	// while it runs, so the build output of earlier tasks is there.
+	WorktreesSlots = "slots"
+	// WorktreesFresh makes .hrn/worktrees/<id> per task, kept until hrn batch rm.
+	WorktreesFresh = "fresh"
+)
+
+// DefaultParallel is how many agents run at once when a spec does not say.
+// Four: the owner's PC has 32 threads, and an agent spends most of its time
+// waiting on its model; a gate that builds already takes every core, so more
+// than a few at once mostly compete for memory and disk.
+const DefaultParallel = 4
+
+type Task struct {
+	ID      string `json:"id,omitempty"` // branch hrn/<id> (and worktree .hrn/worktrees/<id> when fresh); default t1, t2, ...
+	Prompt  string `json:"prompt"`
+	Purpose string `json:"purpose,omitempty"`
+	Backend string `json:"backend,omitempty"`
+	// Options set here override the spec's, field by field; a switch can be
+	// turned on for one task but not back off, and a zero limit inherits.
+	agent.Options
+	Gate        []string       `json:"gate,omitempty"`
+	GateTimeout agent.Duration `json:"gate_timeout,omitempty"`
+	Retry       []string       `json:"retry,omitempty"`
+	// Expect is a regular expression the agent's final answer must match. It
+	// is checked before the gates and reported as one, so a task whose answer
+	// is the deliverable ("is there a bug?") can fail on what it said.
+	Expect string `json:"expect,omitempty"`
+}
+
+type Status string
+	SwitchedFrom string `json:"switched_from,omitempty"`
+}
+
+type GateResult struct {
+	Command  string        `json:"command"`
+	ExitCode int           `json:"exit_code"` // -1 when killed: Killed says why
+	Output   string        `json:"output"`    // last part of combined stdout/stderr
+	Duration time.Duration `json:"duration_ns"`
+	// Killed is why a gate with exit code -1 never finished: KilledTimeout when
+	// hrn's own gate_timeout ran out (Timeout is the limit that applied), or
+	// KilledCanceled when the batch was interrupted. Empty for a gate that
+	// exited on its own, and in records written before the field existed.
+	Killed  string         `json:"killed,omitempty"`
+	Timeout agent.Duration `json:"timeout,omitempty"`
+}
+
+const (
+	KilledTimeout  = "timeout"
+	KilledCanceled = "canceled"
+)
+
+// Outcome says how the gate ended, for every line that reports a failed gate
+// to the operator: "exited 3", or for a killed gate why it was killed and what
+// to do about it, so a timed-out suite is never mistaken for failing code.
+func (g GateResult) Outcome() string {
+	switch g.Killed {
+	case KilledTimeout:
+		return fmt.Sprintf("killed after %s (gate_timeout; set %q in the spec to allow more)", g.Timeout, "gate_timeout")
+	case KilledCanceled:
+		return "canceled"
+	}
+	return fmt.Sprintf("exited %d", g.ExitCode)
+}
+
+// Brief is Outcome for the retry prompt, as the predicate of "The gate command
+// `...` ...": it leaves out the advice to set gate_timeout, which the agent
+// cannot follow and the prompt says is the operator's.
+func (g GateResult) Brief() string {
+	switch g.Killed {
+	case KilledTimeout:
+		return fmt.Sprintf("was killed after %s by gate_timeout", g.Timeout)
+	case KilledCanceled:
+		return "was canceled"
+	}
+	return fmt.Sprintf("exited %d", g.ExitCode)
+}
+
+// Event is progress for a caller to print. Kind is one of start, tool, run,
+// gate, retry, switch, wait (for a free slot), done. Run delivers events one at a time, so the callback need
+// not lock.
+type Event struct {
+	Task string
+	Kind string
+	Text string
+}
+
+const defaultGateTimeout = 15 * time.Minute
+
+// maxGateTimeout is where a gate stops being a check and becomes a job.
+const maxGateTimeout = 24 * time.Hour
+
+// worktreeMu serialises `git worktree add`, `remove` and `prune` for this
+// process. They all rewrite the repository's shared worktree metadata, and git
+			return errors.New("empty gate command")
+		}
+	}
+	return nil
+}
+
+func checkGateTimeout(d agent.Duration) error {
+	if d < 0 || time.Duration(d) > maxGateTimeout {
+		return fmt.Errorf("gate_timeout %s: must be positive and at most %s (leave it out for the 15m default)", d, maxGateTimeout)
+	}
+	return nil
+}
+
+	}
+	if err := p.Check(backends[0]); err != nil {
+		return fail(err)
+	}
+	backends = append(backends, firstList(t.Retry, spec.Retry)...)
+	gates := firstList(t.Gate, spec.Gate)
+	gateTimeout := defaultGateTimeout
+	if d := firstNonZero(t.GateTimeout, spec.GateTimeout); d > 0 {
+		gateTimeout = time.Duration(d)
+	}
+	if _, err := gitOut(ctx, root, "rev-parse", "--verify", "--quiet", "refs/heads/"+tr.Branch); err == nil {
+		return fail(errors.New(takenError("branch", tr.Branch)))
+	}
+	if !slots {
+		if _, err := os.Stat(tr.Worktree); err == nil {
+			return fail(errors.New(takenError("worktree", tr.Worktree)))
+		}
+	}
+
+	task := agent.Task{Options: opts, OriginalPrompt: t.Prompt, Purpose: t.Purpose} // Dir is the worktree, once there is one
+	expect, err := compileExpect(t.Expect)
+	if err != nil {
+		return fail(err)
+	}
+
+	// Backends whose usage limit this task reached: they do not start again

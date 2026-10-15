@@ -1,0 +1,32 @@
+package suitekey_test
+
+import (
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/suitekey"
+)
+
+func TestKeys(t *testing.T) {
+	for _, tc := range []struct {
+		spec            suitekey.Spec
+		tasks, variants string
+	}{
+		{suitekey.Spec{}, "", "[]"},
+		{suitekey.Spec{Tasks: []string{"b", "a", "b"}, Variants: []string{"small", "large", "small"}}, "a, b", `["large","small"]`},
+		{suitekey.Spec{Tasks: []string{"x"}, Variants: []string{""}}, "x", `[""]`},
+		{suitekey.Spec{Tasks: []string{"fix-sum", "go-fib-memo"}, Variants: []string{"luna-low", "haiku-low", "sol-medium"}}, "fix-sum, go-fib-memo", `["haiku-low","luna-low","sol-medium"]`},
+	} {
+		if got := suitekey.Tasks(tc.spec); got != tc.tasks {
+			t.Errorf("Tasks(%+v) = %q, want %q", tc.spec, got, tc.tasks)
+		}
+		tasks, variants := suitekey.Key(tc.spec)
+		if tasks != tc.tasks || variants != tc.variants {
+			t.Errorf("Key(%+v) = %q, %q, want %q, %q", tc.spec, tasks, variants, tc.tasks, tc.variants)
+		}
+	}
+	spec := suitekey.Spec{Tasks: []string{"b", "a"}, Variants: []string{"z", "y"}}
+	suitekey.Key(spec)
+	if spec.Tasks[0] != "b" || spec.Variants[0] != "z" {
+		t.Error("Key reordered its input")
+	}
+}

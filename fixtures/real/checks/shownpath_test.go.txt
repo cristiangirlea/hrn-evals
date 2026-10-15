@@ -1,0 +1,27 @@
+package shownpath_test
+
+import (
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/shownpath"
+)
+
+func TestShown(t *testing.T) {
+	for in, want := range map[string]string{
+		`C:\Users\someone\.hrn`:     ".../.hrn",
+		`c:/Users/someone/.hrn/`:    ".../.hrn",
+		`D:\work\page.md`:           ".../page.md",
+		"/home/someone/.hrn":        ".../.hrn",
+		"/home/someone/.hrn//":      ".../.hrn",
+		"~/.hrn":                    ".../.hrn",
+		`\\server\share\hrn`:        ".../hrn",
+		"results/where-it-loses.md": "results/where-it-loses.md",
+		"../other/page.md":          "../other/page.md",
+		"page.md":                   "page.md",
+		"":                          "",
+	} {
+		if got := shownpath.Shown(in); got != want {
+			t.Errorf("Shown(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

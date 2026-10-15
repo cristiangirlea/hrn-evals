@@ -1,0 +1,50 @@
+package variantname_test
+
+import (
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/variantname"
+)
+
+func TestDisplayName(t *testing.T) {
+	for _, tc := range []struct {
+		v    variantname.Variant
+		want string
+	}{
+		{variantname.Variant{Name: "sol-medium", Backend: "codex", Model: "gpt"}, "sol-medium"},
+		{variantname.Variant{Backend: "claude"}, "claude"},
+		{variantname.Variant{Backend: "codex", Model: "m1", Effort: "low"}, "codex-m1-low"},
+		{variantname.Variant{Backend: "codex", Effort: "high"}, "codex-high"},
+		{variantname.Variant{Backend: "claude", Model: "sonnet"}, "claude-sonnet"},
+		{variantname.Variant{Model: "m1"}, "-m1"},
+		{variantname.Variant{Effort: "low"}, "-low"},
+		{variantname.Variant{}, ""},
+	} {
+		if got := tc.v.DisplayName(); got != tc.want {
+			t.Errorf("%+v.DisplayName() = %q, want %q", tc.v, got, tc.want)
+		}
+	}
+}
+
+func TestValidate(t *testing.T) {
+	ok := []variantname.Variant{{Name: "a"}, {Backend: "codex"}, {Backend: "codex", Model: "m1"}}
+	if err := variantname.Validate(ok); err != nil {
+		t.Errorf("Validate(valid) = %v", err)
+	}
+	for _, tc := range []struct {
+		name   string
+		matrix []variantname.Variant
+		want   string
+	}{
+		{"empty", nil, "matrix is empty"},
+		{"nameless second", []variantname.Variant{{Backend: "codex"}, {}}, "variant 2 has no name and no backend"},
+		{"duplicate derived", []variantname.Variant{{Backend: "codex", Model: "m1"}, {Name: "x"}, {Backend: "codex", Model: "m1"}}, `duplicate variant "codex-m1"`},
+		{"duplicate of a name", []variantname.Variant{{Name: "claude"}, {Backend: "claude"}}, `duplicate variant "claude"`},
+		{"nameless before duplicate", []variantname.Variant{{Name: "a"}, {}, {Name: "a"}}, "variant 2 has no name and no backend"},
+	} {
+		err := variantname.Validate(tc.matrix)
+		if err == nil || err.Error() != tc.want {
+			t.Errorf("%s: Validate = %v, want %q", tc.name, err, tc.want)
+		}
+	}
+}
