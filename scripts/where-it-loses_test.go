@@ -339,30 +339,109 @@ func TestSingleCellRerunFix(t *testing.T) {
 		}
 		return e
 	}
-	const task = `{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20,"gate":["go test ./a"]}`
-	const variant = `{"name":"small","backend":"codex","model":"m1","effort":"low"}`
-	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[` + task + `,{"id":"b","prompt":"do b"}],"matrix":[` + variant + `,{"name":"large","backend":"codex","model":"m2"}]}}`)
+	// The cell's gate, mode and backend come from the spec: the task and the
+	// variant leave them out. later always ran from another dir with other
+	// parallel and repeats, which say where and how often, not what the cell
+	// was given.
+	const top = `"mode":"yolo","gate":["go test ./a"],"backend":"codex"`
+	const task = `{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20}`
+	const variant = `{"name":"small","model":"m1","effort":"low"}`
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"dir":"/old","parallel":2,"repeats":3,` + top + `,"tasks":[` + task + `,{"id":"b","prompt":"do b"}],"matrix":[` + variant + `,{"name":"large","model":"m2"}]}}`)
 	failing := taskResult{Task: "a", Variant: "small", Passed: 1, Total: 3}
-	for _, tc := range []struct{ name, started, tasks, matrix, want string }{
-		{"identical cell alone", "2026-10-02T00:00:00Z", `[` + task + `]`, `[` + variant + `]`, "fixed in eval rerun"},
-		{"keys reordered", "2026-10-02T00:00:00Z", `[{"gate":["go test ./a"],"max_turns":20,"prompt":"PRIVATE PROMPT","id":"a"}]`, `[{"effort":"low","model":"m1","backend":"codex","name":"small"}]`, "fixed in eval rerun"},
-		{"other prompt", "2026-10-02T00:00:00Z", `[{"id":"a","prompt":"PRIVATE OTHER","max_turns":20,"gate":["go test ./a"]}]`, `[` + variant + `]`, ""},
-		{"other gate", "2026-10-02T00:00:00Z", `[{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20,"gate":["go test ./b"]}]`, `[` + variant + `]`, ""},
-		{"task field dropped", "2026-10-02T00:00:00Z", `[{"id":"a","prompt":"PRIVATE PROMPT","gate":["go test ./a"]}]`, `[` + variant + `]`, ""},
-		{"other model under the same name", "2026-10-02T00:00:00Z", `[` + task + `]`, `[{"name":"small","backend":"codex","model":"m3","effort":"low"}]`, ""},
-		{"variant missing", "2026-10-02T00:00:00Z", `[` + task + `]`, `[{"name":"large","backend":"codex","model":"m2"}]`, ""},
-		{"ran before the failure", "2026-09-30T00:00:00Z", `[` + task + `]`, `[` + variant + `]`, ""},
+	for _, tc := range []struct{ name, started, top, tasks, matrix, want string }{
+		{"identical cell alone", "2026-10-02T00:00:00Z", top, `[` + task + `]`, `[` + variant + `]`, "fixed in eval rerun"},
+		{"keys reordered", "2026-10-02T00:00:00Z", `"backend":"codex","gate":["go test ./a"],"mode":"yolo"`, `[{"max_turns":20,"prompt":"PRIVATE PROMPT","id":"a"}]`, `[{"effort":"low","model":"m1","name":"small"}]`, "fixed in eval rerun"},
+		{"other prompt", "2026-10-02T00:00:00Z", top, `[{"id":"a","prompt":"PRIVATE OTHER","max_turns":20}]`, `[` + variant + `]`, ""},
+		{"gate moved into the task", "2026-10-02T00:00:00Z", top, `[{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20,"gate":["go test ./a"]}]`, `[` + variant + `]`, ""},
+		{"task field dropped", "2026-10-02T00:00:00Z", top, `[{"id":"a","prompt":"PRIVATE PROMPT"}]`, `[` + variant + `]`, ""},
+		{"other model under the same name", "2026-10-02T00:00:00Z", top, `[` + task + `]`, `[{"name":"small","model":"m3","effort":"low"}]`, ""},
+		{"variant missing", "2026-10-02T00:00:00Z", top, `[` + task + `]`, `[{"name":"large","model":"m2"}]`, ""},
+		{"other top-level gate", "2026-10-02T00:00:00Z", `"mode":"yolo","gate":["go test ./b"],"backend":"codex"`, `[` + task + `]`, `[` + variant + `]`, ""},
+		{"top-level gate dropped", "2026-10-02T00:00:00Z", `"mode":"yolo","backend":"codex"`, `[` + task + `]`, `[` + variant + `]`, ""},
+		{"other top-level mode", "2026-10-02T00:00:00Z", `"mode":"auto","gate":["go test ./a"],"backend":"codex"`, `[` + task + `]`, `[` + variant + `]`, ""},
+		{"other top-level backend", "2026-10-02T00:00:00Z", `"mode":"yolo","gate":["go test ./a"],"backend":"claude"`, `[` + task + `]`, `[` + variant + `]`, ""},
+		{"judge added", "2026-10-02T00:00:00Z", top + `,"judge":{"rubric":"PRIVATE RUBRIC"}`, `[` + task + `]`, `[` + variant + `]`, ""},
+		{"ran before the failure", "2026-09-30T00:00:00Z", top, `[` + task + `]`, `[` + variant + `]`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			later := decode(`{"id":"rerun","started":"` + tc.started + `","spec":{"tasks":` + tc.tasks + `,"matrix":` + tc.matrix + `},"table":{"tasks":[{"task":"a","variant":"small","passed":3,"total":3}]}}`)
+			later := decode(`{"id":"rerun","started":"` + tc.started + `","spec":{"dir":"/rerun","parallel":1,"repeats":1,` + tc.top + `,"tasks":` + tc.tasks + `,"matrix":` + tc.matrix + `},"table":{"tasks":[{"task":"a","variant":"small","passed":3,"total":3}]}}`)
 			if got := fixedIn([]evalRecord{later}, old, failing); got != tc.want {
 				t.Errorf("fixedIn = %q, want %q", got, tc.want)
 			}
 		})
 	}
 	// A re-run that still fails a repetition is not a fix, whatever its spec.
-	partial := decode(`{"id":"partial","started":"2026-10-02T00:00:00Z","spec":{"tasks":[` + task + `],"matrix":[` + variant + `]},"table":{"tasks":[{"task":"a","variant":"small","passed":2,"total":3}]}}`)
+	partial := decode(`{"id":"partial","started":"2026-10-02T00:00:00Z","spec":{` + top + `,"tasks":[` + task + `],"matrix":[` + variant + `]},"table":{"tasks":[{"task":"a","variant":"small","passed":2,"total":3}]}}`)
 	if got := fixedIn([]evalRecord{partial}, old, failing); got != "" {
 		t.Errorf("partial re-run counted as a fix: %q", got)
+	}
+}
+
+func TestUnnamedVariantRerunFix(t *testing.T) {
+	decode := func(s string) evalRecord {
+		t.Helper()
+		var e evalRecord
+		if err := json.Unmarshal([]byte(s), &e); err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	// hrn names a variant without a name backend[-model][-effort], and the
+	// results table carries that name.
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"},{"backend":"claude"}]}}`)
+	for _, tc := range []struct{ name, variant, matrix, want string }{
+		{"backend, model and effort", "codex-m1-low", `[{"backend":"codex","model":"m1","effort":"low"}]`, "fixed in eval rerun"},
+		{"backend alone", "claude", `[{"backend":"claude"}]`, "fixed in eval rerun"},
+		{"other effort under the same backend and model", "codex-m1-low", `[{"backend":"codex","model":"m1","effort":"high"}]`, ""},
+		// Spelling the name out defines the variant differently: entries are
+		// compared, not effective cells.
+		{"name spelled out", "codex-m1-low", `[{"name":"codex-m1-low","backend":"codex","model":"m1","effort":"low"}]`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			later := decode(`{"id":"rerun","started":"2026-10-02T00:00:00Z","spec":{"tasks":[{"id":"a"}],"matrix":` + tc.matrix + `},"table":{"tasks":[{"task":"a","variant":"` + tc.variant + `","passed":1,"total":1}]}}`)
+			if got := fixedIn([]evalRecord{later}, old, taskResult{Task: "a", Variant: tc.variant, Total: 1}); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGenerateSingleCellRerun(t *testing.T) {
+	home := t.TempDir()
+	write := func(path, content string) {
+		t.Helper()
+		path = filepath.Join(home, path)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The task runs under the spec's gate, and the variant has no name: hrn
+	// calls it codex-m1-low.
+	const top = `"mode":"yolo","gate":["go test ./..."],"max_turns":20`
+	const cell = `"tasks":[{"id":"a","prompt":"PRIVATE PROMPT"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"}]`
+	write("evals/old.json", `{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"dir":"/old","parallel":2,"repeats":3,`+top+`,"tasks":[{"id":"a","prompt":"PRIVATE PROMPT"},{"id":"b","prompt":"PRIVATE OTHER"}],"matrix":[{"backend":"codex","model":"m1","effort":"low"},{"name":"large","backend":"codex","model":"m2"}]},"table":{"variants":[{"name":"codex-m1-low"},{"name":"large"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":1,"total":3},{"task":"a","variant":"large","passed":3,"total":3},{"task":"b","variant":"codex-m1-low","passed":3,"total":3},{"task":"b","variant":"large","passed":3,"total":3}]}}`)
+	// The cell alone under another top-level gate passes, but is no fix.
+	write("evals/other-gate.json", `{"id":"other-gate","started":"2026-10-02T00:00:00Z","spec":{"dir":"/other","mode":"yolo","gate":["true"],"max_turns":20,`+cell+`},"table":{"variants":[{"name":"codex-m1-low"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":3,"total":3}]}}`)
+	// The cell alone from another directory, with other parallel and repeats, is.
+	write("evals/rerun.json", `{"id":"rerun","started":"2026-10-03T00:00:00Z","spec":{"dir":"/rerun","parallel":1,"repeats":1,`+top+`,`+cell+`},"table":{"variants":[{"name":"codex-m1-low"}],"tasks":[{"task":"a","variant":"codex-m1-low","passed":1,"total":1}]}}`)
+	out := filepath.Join(home, "page.md")
+	if err := generate(home, out, "generate"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	if want := "| a | 1/3 (2 failed) | old | (gate output not kept) | fixed in eval rerun |"; !strings.Contains(page, want) {
+		t.Errorf("missing %q in page:\n%s", want, page)
+	}
+	for _, unwanted := range []string{"fixed in eval other-gate", "PRIVATE"} {
+		if strings.Contains(page, unwanted) {
+			t.Errorf("leaked %q", unwanted)
+		}
 	}
 }

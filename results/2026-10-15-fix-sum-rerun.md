@@ -118,8 +118,9 @@ from a commit that includes #22; only the owner starts evals.
 
 On [where-it-loses](where-it-loses.md), the `f353a` row for `fix-sum` on `luna-low` now carries
 "fixed in eval 3e41f": the generator counts a later run of one cell as a fix when its spec
-holds the identical task and variant definitions, which this one does. The failure row stays,
-as every failure does.
+holds the identical task and variant definitions and the same top-level fields apart from
+`dir`, `parallel` and `repeats`, which this one does. The failure row stays, as every failure
+does.
 
 Not run, and the owner's to start: the full `main-and-cheap-tier` suite from a commit with the
 new bullet, which is what replaces the table; one run each of `summarise-notes` and a gobench
