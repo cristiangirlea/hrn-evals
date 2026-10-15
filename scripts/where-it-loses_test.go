@@ -329,3 +329,40 @@ func TestSuiteMatrixLabels(t *testing.T) {
 		}
 	}
 }
+
+func TestSingleCellRerunFix(t *testing.T) {
+	decode := func(s string) evalRecord {
+		t.Helper()
+		var e evalRecord
+		if err := json.Unmarshal([]byte(s), &e); err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	const task = `{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20,"gate":["go test ./a"]}`
+	const variant = `{"name":"small","backend":"codex","model":"m1","effort":"low"}`
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[` + task + `,{"id":"b","prompt":"do b"}],"matrix":[` + variant + `,{"name":"large","backend":"codex","model":"m2"}]}}`)
+	failing := taskResult{Task: "a", Variant: "small", Passed: 1, Total: 3}
+	for _, tc := range []struct{ name, started, tasks, matrix, want string }{
+		{"identical cell alone", "2026-10-02T00:00:00Z", `[` + task + `]`, `[` + variant + `]`, "fixed in eval rerun"},
+		{"keys reordered", "2026-10-02T00:00:00Z", `[{"gate":["go test ./a"],"max_turns":20,"prompt":"PRIVATE PROMPT","id":"a"}]`, `[{"effort":"low","model":"m1","backend":"codex","name":"small"}]`, "fixed in eval rerun"},
+		{"other prompt", "2026-10-02T00:00:00Z", `[{"id":"a","prompt":"PRIVATE OTHER","max_turns":20,"gate":["go test ./a"]}]`, `[` + variant + `]`, ""},
+		{"other gate", "2026-10-02T00:00:00Z", `[{"id":"a","prompt":"PRIVATE PROMPT","max_turns":20,"gate":["go test ./b"]}]`, `[` + variant + `]`, ""},
+		{"task field dropped", "2026-10-02T00:00:00Z", `[{"id":"a","prompt":"PRIVATE PROMPT","gate":["go test ./a"]}]`, `[` + variant + `]`, ""},
+		{"other model under the same name", "2026-10-02T00:00:00Z", `[` + task + `]`, `[{"name":"small","backend":"codex","model":"m3","effort":"low"}]`, ""},
+		{"variant missing", "2026-10-02T00:00:00Z", `[` + task + `]`, `[{"name":"large","backend":"codex","model":"m2"}]`, ""},
+		{"ran before the failure", "2026-09-30T00:00:00Z", `[` + task + `]`, `[` + variant + `]`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			later := decode(`{"id":"rerun","started":"` + tc.started + `","spec":{"tasks":` + tc.tasks + `,"matrix":` + tc.matrix + `},"table":{"tasks":[{"task":"a","variant":"small","passed":3,"total":3}]}}`)
+			if got := fixedIn([]evalRecord{later}, old, failing); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	// A re-run that still fails a repetition is not a fix, whatever its spec.
+	partial := decode(`{"id":"partial","started":"2026-10-02T00:00:00Z","spec":{"tasks":[` + task + `],"matrix":[` + variant + `]},"table":{"tasks":[{"task":"a","variant":"small","passed":2,"total":3}]}}`)
+	if got := fixedIn([]evalRecord{partial}, old, failing); got != "" {
+		t.Errorf("partial re-run counted as a fix: %q", got)
+	}
+}

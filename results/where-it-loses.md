@@ -4,9 +4,9 @@ Date: 2026-10-15 (latest saved eval, UTC).
 
 Produced by: <code>scripts/where-it-loses.sh</code>
 
-Evals read: 57. Unreadable or invalid evals skipped: 0.
+Evals read: 58. Unreadable or invalid evals skipped: 0.
 
-Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.
+Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set), or a re-run whose spec holds the identical task and variant definitions. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.
 
 ## Failing cases
 
@@ -36,7 +36,7 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 
 | Task | Passed/total (failed) | Eval | Gate message | History |
 |---|---|---|---|---|
-| fix-sum | 1/3 (2 failed) | f353a | <code>go test ./fixtures/buggy/</code><br>FAIL<br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/buggy	0.344s<br>FAIL |  |
+| fix-sum | 1/3 (2 failed) | f353a | <code>go test ./fixtures/buggy/</code><br>FAIL<br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/buggy	0.344s<br>FAIL | fixed in eval 3e41f |
 | go-explain-goroutines | 1/3 (2 failed) | f353a | <code>test -s fixtures/gobench/GOROUTINES.md &#124;&#124; { echo &#39;GOROUTINES.md is missing or empty&#39;; exit 1; }</code><br>GOROUTINES.md is missing or empty |  |
 | go-rest-items | 2/3 (1 failed) | f353a | <code>go test -count=1 -timeout 60s ./fixtures/gobench/items/ &#124;&#124; { echo &#39;the handler does not meet the contract&#39;; exit 1; }</code><br>FAIL	github.com/cristiangirlea/hrn-evals/fixtures/gobench/items	0.406s<br>FAIL<br>the handler does not meet the contract |  |
 

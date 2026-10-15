@@ -27,12 +27,61 @@ type evalRecord struct {
 }
 
 type evalSpec struct {
-	Matrix []struct {
+	Matrix []specEntry `json:"matrix"`
+	Tasks  []specEntry `json:"tasks"`
+}
+
+// specEntry is one task or one variant of an eval spec: the task's id or the
+// variant's name, and the whole entry as JSON with sorted keys, so two evals can
+// be compared for the same task or variant definition whatever fields a spec
+// carries. The JSON holds the prompt; it is compared, never written to the page.
+type specEntry struct {
+	ID   string
+	Name string
+	JSON string
+}
+
+func (s *specEntry) UnmarshalJSON(b []byte) error {
+	var names struct {
+		ID   string `json:"id"`
 		Name string `json:"name"`
-	} `json:"matrix"`
-	Tasks []struct {
-		ID string `json:"id"`
-	} `json:"tasks"`
+	}
+	if err := json.Unmarshal(b, &names); err != nil {
+		return err
+	}
+	var value any
+	if err := json.Unmarshal(b, &value); err != nil {
+		return err
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	*s = specEntry{ID: names.ID, Name: names.Name, JSON: string(canonical)}
+	return nil
+}
+
+// entry returns the canonical JSON of the first entry whose key is want.
+func entry(entries []specEntry, key func(specEntry) string, want string) (string, bool) {
+	for _, e := range entries {
+		if key(e) == want {
+			return e.JSON, true
+		}
+	}
+	return "", false
+}
+
+// sameCell reports whether later's spec defines the failing case's task and
+// variant exactly as old's does, so that later counts as a re-run of that cell
+// even when it ran that cell alone.
+func sameCell(old, later evalRecord, task taskResult) bool {
+	taskID := func(e specEntry) string { return e.ID }
+	variantName := func(e specEntry) string { return e.Name }
+	oldTask, ok1 := entry(old.Spec.Tasks, taskID, task.Task)
+	laterTask, ok2 := entry(later.Spec.Tasks, taskID, task.Task)
+	oldVariant, ok3 := entry(old.Spec.Matrix, variantName, task.Variant)
+	laterVariant, ok4 := entry(later.Spec.Matrix, variantName, task.Variant)
+	return ok1 && ok2 && ok3 && ok4 && oldTask == laterTask && oldVariant == laterVariant
 }
 
 type variant struct {
@@ -233,11 +282,17 @@ func gateMessage(home string, e evalRecord, t taskResult) string {
 	return "(attempt not found)"
 }
 
+// fixedIn names the earliest later eval in which the failing case's task and
+// variant passed every repetition: a later run of the same suite (the same task
+// ID set), or a re-run whose spec holds the identical task and variant definitions.
 func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 	var fixed *evalRecord
 	for i := range evals {
 		e := &evals[i]
-		if e.suite() != old.suite() || !e.Started.After(old.Started) {
+		if !e.Started.After(old.Started) {
+			continue
+		}
+		if e.suite() != old.suite() && !sameCell(old, *e, task) {
 			continue
 		}
 		for _, t := range e.Table.Tasks {
@@ -303,7 +358,7 @@ func generate(home, out, command string) error {
 		date = latest.UTC().Format("2006-01-02")
 	}
 	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d.\n\n", date, cell(command), len(evals), skipped)
-	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case with the same suite and variant, ordered by started. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
+	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set), or a re-run whose spec holds the identical task and variant definitions. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
 		t taskResult
