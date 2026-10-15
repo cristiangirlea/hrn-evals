@@ -445,3 +445,34 @@ func TestGenerateSingleCellRerun(t *testing.T) {
 		}
 	}
 }
+
+func TestOneTaskSuiteRerunFix(t *testing.T) {
+	decode := func(s string) evalRecord {
+		t.Helper()
+		var e evalRecord
+		if err := json.Unmarshal([]byte(s), &e); err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	// A one-task suite's cell, re-run alone, has the suite's task ID set; the
+	// matrix names tell that re-run from a run of the suite, so that it is
+	// judged as a cell, top-level fields included.
+	const task = `{"id":"x","prompt":"PRIVATE PROMPT"}`
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"claude","backend":"claude"},{"name":"codex","backend":"codex"}]}}`)
+	failing := taskResult{Task: "x", Variant: "codex", Total: 3}
+	for _, tc := range []struct{ name, spec, want string }{
+		{"cell alone", `{"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, "fixed in eval later"},
+		{"cell alone under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, ""},
+		{"cell alone without the gate", `{"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, ""},
+		// A later run of the whole suite is trusted as such, as it always was.
+		{"whole suite under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":3,"total":3}]}}`)
+			if got := fixedIn([]evalRecord{later}, old, failing); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
