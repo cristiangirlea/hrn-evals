@@ -13,7 +13,7 @@ regression gets caught instead of noticed later.
 | `suites/golden/` | Unambiguous tasks with a known right answer. A failure here is a regression. `gobench.json` holds four Go tasks (memoized Fibonacci, a REST handler, a unit test, a short explanation), taken from the prompts of the 2025 `llm-agent-benchmark` and given gates. |
 | `suites/regression/` | Tasks that once went wrong, kept so they stay fixed. |
 | `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. |
-| `suites/routing/` | The tasks the other suites prove, run across backends, models and efforts so `hrn route from-eval` can build the routing table. `codex-first-table.json` was the first, codex only (`results/2026-10-14-routing.md`); `main-and-cheap-tier.json` adds Sonnet and Haiku with three repetitions (`results/2026-10-15-routing.md`). |
+| `suites/routing/` | The tasks the other suites prove, run across backends, models and efforts so `hrn route from-eval` can build the routing table. `codex-first-table.json` was the first, codex only (`results/2026-10-14-routing.md`); `main-and-cheap-tier.json` adds Sonnet and Haiku with three repetitions (`results/2026-10-15-routing.md`). `purposes.json` adds review, refactor, plan and ops tasks. |
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
 | `scripts/run-all.sh` | Runs every suite, or the ones named, then lists the saved evals. |
 | `results/` | The results pages. Every page from now on meets [the publication gate](docs/publication-gate.md), the rule for when a saving or quality claim may be made. |
