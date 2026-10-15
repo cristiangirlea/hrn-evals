@@ -26,25 +26,70 @@ type evalRecord struct {
 	} `json:"table"`
 }
 
+// evalSpec is an eval spec as a record or a suite file holds it: its tasks and
+// its matrix as entries, and the rest of its top-level fields as JSON with
+// sorted keys. dir, parallel and repeats are left out of the rest: they say
+// where and how often a cell ran, not what it was given.
 type evalSpec struct {
-	Matrix []specEntry `json:"matrix"`
-	Tasks  []specEntry `json:"tasks"`
+	Matrix []specEntry
+	Tasks  []specEntry
+	Rest   string
 }
 
-// specEntry is one task or one variant of an eval spec: the task's id or the
-// variant's name, and the whole entry as JSON with sorted keys, so two evals can
-// be compared for the same task or variant definition whatever fields a spec
-// carries. The JSON holds the prompt; it is compared, never written to the page.
+func (s *evalSpec) UnmarshalJSON(b []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return err
+	}
+	var spec evalSpec
+	rest := make(map[string]any, len(fields))
+	for key, raw := range fields {
+		var err error
+		switch key {
+		case "tasks":
+			err = json.Unmarshal(raw, &spec.Tasks)
+		case "matrix":
+			err = json.Unmarshal(raw, &spec.Matrix)
+		case "dir", "parallel", "repeats":
+		default:
+			var value any
+			err = json.Unmarshal(raw, &value)
+			rest[key] = value
+		}
+		if err != nil {
+			return err
+		}
+	}
+	canonical, err := json.Marshal(rest)
+	if err != nil {
+		return err
+	}
+	spec.Rest = string(canonical)
+	*s = spec
+	return nil
+}
+
+// specEntry is one task or one variant of an eval spec: the task's id, the
+// variant's name and the fields hrn names a nameless variant by, and the whole
+// entry as JSON with sorted keys, so two evals can be compared for the same
+// task or variant definition whatever fields a spec carries. The JSON holds
+// the prompt; it is compared, never written to the page.
 type specEntry struct {
-	ID   string
-	Name string
-	JSON string
+	ID      string
+	Name    string
+	Backend string
+	Model   string
+	Effort  string
+	JSON    string
 }
 
 func (s *specEntry) UnmarshalJSON(b []byte) error {
 	var names struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Backend string `json:"backend"`
+		Model   string `json:"model"`
+		Effort  string `json:"effort"`
 	}
 	if err := json.Unmarshal(b, &names); err != nil {
 		return err
@@ -57,8 +102,24 @@ func (s *specEntry) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	*s = specEntry{ID: names.ID, Name: names.Name, JSON: string(canonical)}
+	*s = specEntry{ID: names.ID, Name: names.Name, Backend: names.Backend, Model: names.Model, Effort: names.Effort, JSON: string(canonical)}
 	return nil
+}
+
+// variantName is the name hrn gives the variant and writes into the results
+// table: its name, or backend[-model][-effort] when it has none.
+func (e specEntry) variantName() string {
+	if e.Name != "" {
+		return e.Name
+	}
+	parts := []string{e.Backend}
+	if e.Model != "" {
+		parts = append(parts, e.Model)
+	}
+	if e.Effort != "" {
+		parts = append(parts, e.Effort)
+	}
+	return strings.Join(parts, "-")
 }
 
 // entry returns the canonical JSON of the first entry whose key is want.
@@ -71,17 +132,22 @@ func entry(entries []specEntry, key func(specEntry) string, want string) (string
 	return "", false
 }
 
-// sameCell reports whether later's spec defines the failing case's task and
-// variant exactly as old's does, so that later counts as a re-run of that cell
-// even when it ran that cell alone.
+// sameCell reports whether later's spec defines the failing case's cell exactly
+// as old's does, so that later counts as a re-run of that cell even when it ran
+// that cell alone: the task entry, the variant entry and the spec's top-level
+// fields apart from dir, parallel and repeats must be identical, since a cell
+// inherits what its task and variant leave out (gate, mode, max_turns, timeout,
+// backend, model, effort) from the spec. The rest of those fields, the judge
+// among them, only scores or guards a run, and is compared all the same. A
+// variant without a name is matched by the name hrn gives it,
+// backend[-model][-effort].
 func sameCell(old, later evalRecord, task taskResult) bool {
 	taskID := func(e specEntry) string { return e.ID }
-	variantName := func(e specEntry) string { return e.Name }
 	oldTask, ok1 := entry(old.Spec.Tasks, taskID, task.Task)
 	laterTask, ok2 := entry(later.Spec.Tasks, taskID, task.Task)
-	oldVariant, ok3 := entry(old.Spec.Matrix, variantName, task.Variant)
-	laterVariant, ok4 := entry(later.Spec.Matrix, variantName, task.Variant)
-	return ok1 && ok2 && ok3 && ok4 && oldTask == laterTask && oldVariant == laterVariant
+	oldVariant, ok3 := entry(old.Spec.Matrix, specEntry.variantName, task.Variant)
+	laterVariant, ok4 := entry(later.Spec.Matrix, specEntry.variantName, task.Variant)
+	return ok1 && ok2 && ok3 && ok4 && oldTask == laterTask && oldVariant == laterVariant && old.Spec.Rest == later.Spec.Rest
 }
 
 type variant struct {
@@ -284,7 +350,9 @@ func gateMessage(home string, e evalRecord, t taskResult) string {
 
 // fixedIn names the earliest later eval in which the failing case's task and
 // variant passed every repetition: a later run of the same suite (the same task
-// ID set), or a re-run whose spec holds the identical task and variant definitions.
+// ID set and matrix variant names, as suites are labelled), or a re-run whose
+// spec defines the same cell (sameCell). The matrix names keep a one-task
+// suite's cell, re-run alone, out of the suite rule.
 func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 	var fixed *evalRecord
 	for i := range evals {
@@ -292,7 +360,7 @@ func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 		if !e.Started.After(old.Started) {
 			continue
 		}
-		if e.suite() != old.suite() && !sameCell(old, *e, task) {
+		if e.labelKey() != old.labelKey() && !sameCell(old, *e, task) {
 			continue
 		}
 		for _, t := range e.Table.Tasks {
@@ -358,7 +426,7 @@ func generate(home, out, command string) error {
 		date = latest.UTC().Format("2006-01-02")
 	}
 	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d.\n\n", date, cell(command), len(evals), skipped)
-	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set), or a re-run whose spec holds the identical task and variant definitions. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
+	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
 		t taskResult
