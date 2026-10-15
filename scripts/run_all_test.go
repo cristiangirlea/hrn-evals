@@ -18,6 +18,7 @@ type runAllCase struct {
 	untracked bool   // a new file left uncommitted
 	hash      string // the hash tool on PATH: "sha256sum" (default), "shasum" or "none"
 	failSuite string // the suite whose hrn eval exits 1
+	failGit   string // the git subcommand that exits 128, as outside a repository
 }
 
 func TestRunAll(t *testing.T) {
@@ -72,9 +73,15 @@ func TestRunAll(t *testing.T) {
 		write("suites/golden/a.json", "{}\n")
 		write("suites/golden/b.json", "{}\n")
 		shell := "#!" + paths["bash"] + "\n"
-		for _, tool := range []string{"git", "dirname", "find", "sort"} {
+		for _, tool := range []string{"dirname", "find", "sort"} {
 			write("bin/"+tool, shell+"exec "+quote(paths[tool])+" \"$@\"\n")
 		}
+		write("bin/git", shell+`if [ "$1" = `+quote(c.failGit)+` ]; then
+ echo "fatal: not a git repository" >&2
+ exit 128
+fi
+exec `+quote(paths["git"])+` "$@"
+`)
 		switch c.hash {
 		case "", "sha256sum":
 			write("bin/sha256sum", shell+"exec "+realHash+" \"$@\"\n")
@@ -185,6 +192,20 @@ fi
 	t.Run("hash tools absent", func(t *testing.T) {
 		out, calls, code, _ := run(t, runAllCase{hash: "none"})
 		if code != 1 || !strings.Contains(out, "run-all: sha256sum or shasum is required for fixture pins") || calls != "version\n" {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	// git failing must stop the run, not read as a clean tree or an empty
+	// suite commit; no eval may start.
+	t.Run("git status fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{failGit: "status"})
+		if code == 0 || calls != "" || strings.Contains(out, "pins:") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("git rev-parse fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{failGit: "rev-parse"})
+		if code == 0 || calls != "version\n" || strings.Contains(out, "suite commit:") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
 	})
