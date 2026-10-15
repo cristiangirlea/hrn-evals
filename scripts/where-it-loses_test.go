@@ -498,6 +498,22 @@ func TestOneTaskSuiteRerunFix(t *testing.T) {
 			}
 		})
 	}
+	// With unnamed variants the key holds the names hrn gives them, so the same
+	// holds: the cell alone is judged as a cell, and a run of the whole suite is
+	// trusted even when it spells the names out. Keyed by the raw names, every
+	// unnamed matrix was one suite, and the two cases came out the other way.
+	unnamed := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"repeats":3,"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"backend":"claude"},{"backend":"codex"}]}}`)
+	for _, tc := range []struct{ name, spec, want string }{
+		{"unnamed cell alone under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"backend":"codex"}]}`, ""},
+		{"whole suite with the names spelled out, under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":1,"total":1}]}}`)
+			if got := fixedIn([]evalRecord{later}, unnamed, failing); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
+	}
 }
 
 func TestSpecNullOrNotObject(t *testing.T) {
@@ -512,9 +528,10 @@ func TestSpecNullOrNotObject(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// hrn writes the spec as an object. A null spec decodes to an empty one
-	// that defines no cell and names no suite, so the record is read and never
-	// credited; a string or an array does not decode, and the record is skipped.
+	// hrn writes the spec as an object. A null spec decodes to an empty one that
+	// defines no cell and shares its suite key only with other null specs, so
+	// the record is read and never credits a cell of a spec; a string or an
+	// array does not decode, and the record is skipped.
 	write("evals/old.json", `{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"repeats":1,"tasks":[{"id":"a","prompt":"PRIVATE PROMPT"}],"matrix":[{"name":"small","backend":"codex"}]},"table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","total":1}]}}`)
 	write("evals/null-spec.json", `{"id":"null-spec","started":"2026-10-02T00:00:00Z","spec":null,"table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`)
 	write("evals/string-spec.json", `{"id":"string-spec","started":"2026-10-02T00:00:00Z","spec":"PRIVATE SPEC","table":{"variants":[{"name":"small"}],"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`)
