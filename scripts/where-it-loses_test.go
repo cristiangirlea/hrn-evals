@@ -48,13 +48,13 @@ func TestGenerate(t *testing.T) {
 	      {"command":"UNKNOWN STATUS","output":"UNKNOWN OUTPUT"},
 	      {"command":"EXIT SUCCESS","exit_code":0,"output":"SUCCESS OUTPUT"},
 	      {"command":"exit-check","exit_code":1,"output":"exit gate failed"}]}]},
-	    {"id":"z-old.broken.small.r1-extra","attempts":[{"gates":[{"command":"WRONG GATE","ok":false,"output":"WRONG OUTPUT"}]}]},
-	    {"id":"z-old.broken.large.r1","attempts":[{"gates":[{"command":"OTHER VARIANT","ok":false,"output":"WRONG OUTPUT"}]}]},
+	    {"id":"z-old.broken.small.r1-extra","attempts":[{"gates":[{"command":"WRONG GATE","exit_code":1,"output":"WRONG OUTPUT"}]}]},
+	    {"id":"z-old.broken.large.r1","attempts":[{"gates":[{"command":"OTHER VARIANT","exit_code":1,"output":"WRONG OUTPUT"}]}]},
 	    {"id":"z-old.broken.small.r1","prompt":"PRIVATE BATCH PROMPT","attempts":[
 	      {"result":{"output":"PRIVATE AGENT OUTPUT"},"gates":[
-	        {"command":"PASSING COMMAND","ok":true,"output":"PASSING OUTPUT"},
-	        {"command":"check | verify <safe>","ok":false,"output":"OMITTED LINE\r\nlast one\r\nlast two | <tag>\r\nlast three\r\n"},
-	        {"command":"SECOND FAILURE","ok":false,"output":"SECOND OUTPUT"}]}]}]}
+	        {"command":"PASSING COMMAND","exit_code":0,"output":"PASSING OUTPUT"},
+	        {"command":"check | verify <safe>","exit_code":1,"output":"OMITTED LINE\r\nlast one\r\nlast two | <tag>\r\nlast three\r\n"},
+	        {"command":"SECOND FAILURE","exit_code":1,"output":"SECOND OUTPUT"}]}]}]}
 	`)
 	write("evals/invalid.json", `{bad json`)
 	write("evals/null.json", `null`)
@@ -74,8 +74,8 @@ func TestGenerate(t *testing.T) {
 		"<code>check &#124; verify &lt;safe&gt;</code><br>last one<br>last two &#124; &lt;tag&gt;<br>last three",
 		"fixed in eval a-new", "| missing | 0/2 (2 failed) | z-old | (attempt not found) |",
 		"| exit-status | 0/1 (1 failed) | z-old | <code>exit-check</code><br>exit gate failed |",
-		"| broken | small / large | broken | z-old | 1/2 / 2/2 | 1 (estimate) / 2 (estimate) |",
-		"fewer passes; higher median cost",
+		"| broken | small / large | broken | z-old | 1/2 / 2/2 | 1 (estimate) / 2 (estimate) | 20 / 10 |",
+		"| broken | small / large | z-old | 1 | 1 (estimate) / 2 (estimate) | 0.6 (estimate) / 0.5 (estimate) |",
 		outsideStart + "\nReal run: 2026-10-04, local setup.\n\n<!-- custom -->\n" + outsideEnd,
 	} {
 		if !strings.Contains(page, want) {
@@ -108,7 +108,7 @@ func TestNoGateRan(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(home, "batches", "batch.json")
-	if err := os.WriteFile(path, []byte(`{"tasks":[{"id":"eval.task.small.r1","attempts":[{"result":{"status":"ok"},"gates":[{"ok":true}]}]},{"id":"eval.task.small.r2","attempts":[{"result":{"status":"timeout"},"gates":[]}]}]}`), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(`{"tasks":[{"id":"eval.task.small.r1","attempts":[{"result":{"status":"ok"},"gates":[{"exit_code":0}]}]},{"id":"eval.task.small.r2","attempts":[{"result":{"status":"timeout"},"gates":[]}]}]}`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	e := evalRecord{ID: "eval", BatchID: "batch"}
@@ -142,6 +142,14 @@ func TestCellEscapes(t *testing.T) {
 		{"underscore", "_", "&#95;"},
 		{"backtick", "`", "&#96;"},
 		{"backslash", "\\", "&#92;"},
+		{"colour codes", "\x1b[31mFAIL\x1b[0m ok", "FAIL ok"},
+		{"cursor and erase", "\x1b[2K\x1b[1Gdone", "done"},
+		{"terminal link", "\x1b]8;;https://x\x07link\x1b]8;;\x07", "link"},
+		{"title ended by ST", "\x1b]0;title\x1b\\rest", "rest"},
+		{"bell, NUL and DEL", "a\x07b\x00c\x7fd", "abcd"},
+		{"C1 control", "a\u009bb", "ab"},
+		{"tab", "a\tb", "a b"},
+		{"text kept", "naïve ✓", "naïve ✓"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := cell(tc.input); got != tc.want {
@@ -175,6 +183,11 @@ func TestCheaper(t *testing.T) {
 		{"equal zero cost", variant{Tokens: 10}, variant{Tokens: 20}, true},
 		{"equal paid cost", variant{Cost: 1, Tokens: 10}, variant{Cost: 1, Tokens: 20}, true},
 		{"equal metrics", variant{Cost: 1, Tokens: 10}, variant{Cost: 1, Tokens: 10}, false},
+		// An unpriced variant is not cheapest for its zero: the pair compares tokens.
+		{"unpriced against priced, more tokens", variant{Tokens: 10}, variant{Cost: 1, Tokens: 5}, false},
+		{"priced against unpriced, fewer tokens", variant{Cost: 1, Tokens: 5}, variant{Tokens: 10}, true},
+		// A zero hrn estimated, a local model's, is a price.
+		{"estimated zero", variant{CostIsEstimate: true, Tokens: 100}, variant{Cost: 1, Tokens: 1}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := cheaper(tc.a, tc.b); got != tc.want {
@@ -268,9 +281,9 @@ func TestSuiteFileLabel(t *testing.T) {
 func TestAllCostsAreEstimates(t *testing.T) {
 	var e evalRecord
 	if err := json.Unmarshal([]byte(`{"table":{"variants":[
-		{"name":"codex","total_cost_usd":0,"median_cost_usd":0},
-		{"name":"claude","total_cost_usd":1,"median_cost_usd":0.5},
-		{"name":"api","total_cost_usd":2,"median_cost_usd":0.75,"cost_is_estimate":true}],
+		{"name":"codex","total_cost_usd":0,"median_cost_usd":0,"median_context_tokens":10},
+		{"name":"claude","total_cost_usd":1,"median_cost_usd":0.5,"median_context_tokens":20},
+		{"name":"api","total_cost_usd":2,"median_cost_usd":0.75,"cost_is_estimate":true,"median_context_tokens":30}],
 		"tasks":[{"task":"task","variant":"codex","passed":0,"total":3},
 		{"task":"task","variant":"claude","passed":1,"total":3},
 		{"task":"task","variant":"api","passed":3,"total":3}]}}`), &e); err != nil {
@@ -280,9 +293,10 @@ func TestAllCostsAreEstimates(t *testing.T) {
 	writeComparisons(&page, []evalRecord{e})
 	for _, want := range []string{
 		"Every cost shown is a list-price estimate, hrn's or the CLI's, never a bill.",
-		"| 0 / 1 (estimate) | 0 / 0.5 (estimate) |",
-		"| 0 / 2 (estimate) | 0 / 0.75 (estimate) |",
-		"| 1 (estimate) / 2 (estimate) | 0.5 (estimate) / 0.75 (estimate) |",
+		"| codex / claude | task |  | 0/3 / 1/3 | unpriced / 1 (estimate) | 10 / 20 |",
+		"| codex / api | task |  | 0/3 / 3/3 | unpriced / 2 (estimate) | 10 / 30 |",
+		"| claude / api | task |  | 1/3 / 3/3 | 1 (estimate) / 2 (estimate) | 20 / 30 |",
+		"No median cost overruns in saved comparisons.",
 	} {
 		if !strings.Contains(page.String(), want) {
 			t.Errorf("missing %q", want)
@@ -318,7 +332,7 @@ func TestSuiteMatrixLabels(t *testing.T) {
 		{"task-fallback", `[{"id":"b"},{"id":"a"}]`, "unknown", "small"},
 		{"ids-fallback", `[{"id":"z"},{"id":"a"}]`, "small", "large"},
 	} {
-		write("evals/"+tc.id+".json", `{"id":"`+tc.id+`","started":"2026-10-15T00:00:00Z","spec":{"tasks":`+tc.tasks+`,"matrix":[{"name":"`+tc.dear+`"},{"name":"`+tc.cheap+`"}]},"table":{"variants":[{"name":"`+tc.cheap+`"},{"name":"`+tc.dear+`","total_cost_usd":1}],"tasks":[{"task":"a","variant":"`+tc.cheap+`","total":1},{"task":"a","variant":"`+tc.dear+`","passed":1,"total":1}]}}`)
+		write("evals/"+tc.id+".json", `{"id":"`+tc.id+`","started":"2026-10-15T00:00:00Z","spec":{"tasks":`+tc.tasks+`,"matrix":[{"name":"`+tc.dear+`"},{"name":"`+tc.cheap+`"}]},"table":{"variants":[{"name":"`+tc.cheap+`","total_cost_usd":0.5},{"name":"`+tc.dear+`","total_cost_usd":1}],"tasks":[{"task":"a","variant":"`+tc.cheap+`","total":1},{"task":"a","variant":"`+tc.dear+`","passed":1,"total":1}]}}`)
 	}
 	// Two suites share a task set and differ only in an unnamed variant. The
 	// key holds the name hrn gives it, codex-m1, so the record matches the file
@@ -651,6 +665,104 @@ func TestRuleSentenceMatchesComment(t *testing.T) {
 		}
 		if !strings.Contains(comment, clause) {
 			t.Errorf("sameCell's comment lacks %q", clause)
+		}
+	}
+}
+
+func TestUnpricedVariantHasNoOverrun(t *testing.T) {
+	var e evalRecord
+	if err := json.Unmarshal([]byte(`{"id":"e","table":{"variants":[
+		{"name":"codex","total_cost_usd":0,"median_cost_usd":0,"median_context_tokens":50},
+		{"name":"local","total_cost_usd":0,"median_cost_usd":0,"cost_is_estimate":true,"median_context_tokens":50},
+		{"name":"claude","total_cost_usd":3,"median_cost_usd":0.01,"median_context_tokens":40}],
+		"tasks":[{"task":"t","variant":"codex","passed":1,"total":1},
+		{"task":"t","variant":"local","passed":1,"total":1},
+		{"task":"t","variant":"claude","passed":1,"total":1}]}}`), &e); err != nil {
+		t.Fatal(err)
+	}
+	var page strings.Builder
+	writeComparisons(&page, []evalRecord{e})
+	// claude is cheaper than codex on tokens, the unpriced pair's only
+	// measure, and its median is above codex's zero; but codex's zero is no
+	// price, so that is no overrun. local is cheaper than claude by its
+	// estimated zero and its median is below claude's: no overrun either.
+	if !strings.Contains(page.String(), "No median cost overruns in saved comparisons.") {
+		t.Errorf("an unpriced variant was given a median cost overrun:\n%s", page.String())
+	}
+}
+
+func TestOverrunOncePerPair(t *testing.T) {
+	var e evalRecord
+	if err := json.Unmarshal([]byte(`{"id":"e","table":{"variants":[
+		{"name":"small","total_cost_usd":1,"median_cost_usd":0.6,"median_context_tokens":20},
+		{"name":"large","total_cost_usd":2,"median_cost_usd":0.5,"median_context_tokens":10}],
+		"tasks":[{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","passed":1,"total":1},
+		{"task":"b","variant":"small","passed":0,"total":1},{"task":"b","variant":"large","passed":1,"total":1},
+		{"task":"c","variant":"small","passed":1,"total":1}]}}`), &e); err != nil {
+		t.Fatal(err)
+	}
+	var page strings.Builder
+	writeComparisons(&page, []evalRecord{e})
+	out := page.String()
+	want := "| small / large | e | 2 | 1 (estimate) / 2 (estimate) | 0.6 (estimate) / 0.5 (estimate) |"
+	if strings.Count(out, "| small / large | e |") != 1 || !strings.Contains(out, want) {
+		t.Errorf("want one overrun row %q:\n%s", want, out)
+	}
+	if !strings.Contains(out, "| small / large | b | e | 0/1 / 1/1 |") || strings.Contains(out, "| small / large | a | e |") {
+		t.Errorf("fewer passes must be listed per task, and only where there are fewer:\n%s", out)
+	}
+}
+
+func TestOtherProjectsLeftOut(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(root)
+	write := func(path, content string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("suites/golden/ours.json", `{"tasks":[{"id":"a"},{"id":"b"}],"matrix":[{"name":"small"}]}`)
+	record := func(id, tasks, row string) string {
+		return `{"id":"` + id + `","started":"2026-10-15T00:00:00Z","spec":{"tasks":` + tasks + `,"matrix":[{"name":"small"}]},"table":{"variants":[{"name":"small"}],"tasks":[` + row + `]}}`
+	}
+	write("evals/ours.json", record("ours", `[{"id":"a"}]`, `{"task":"a","variant":"small","total":1}`))
+	write("evals/mixed.json", record("mixed", `[{"id":"b"},{"id":"x"}]`, `{"task":"x","variant":"small","total":1}`))
+	write("evals/theirs.json", record("theirs", `[{"id":"greet"}]`, `{"task":"greet","variant":"small","total":1}`))
+	if err := generate(root, "page.md", "generate"); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile("page.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	for _, want := range []string{"Evals read: 2.", "Other projects' evals left out (none of their task IDs is in a suite under suites/): 1.", "| a | 0/1 (1 failed) | ours |", "| x | 0/1 (1 failed) | mixed |"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("missing %q in page:\n%s", want, page)
+		}
+	}
+	if strings.Contains(page, "theirs") || strings.Contains(page, "greet") {
+		t.Errorf("another project's eval is on the page:\n%s", page)
+	}
+}
+
+func TestShownPath(t *testing.T) {
+	for in, want := range map[string]string{
+		`C:\Users\someone\.hrn`:     ".../.hrn",
+		`c:/Users/someone/.hrn/`:    ".../.hrn",
+		"/home/someone/.hrn":        ".../.hrn",
+		"~/.hrn":                    ".../.hrn",
+		`\\server\share\hrn`:        ".../hrn",
+		"results/where-it-loses.md": "results/where-it-loses.md",
+		"page.md":                   "page.md",
+		"":                          "",
+	} {
+		if got := shownPath(in); got != want {
+			t.Errorf("shownPath(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
