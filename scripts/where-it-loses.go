@@ -281,9 +281,16 @@ func suiteLabels() (map[suiteKey]string, error) {
 		if err != nil {
 			return err
 		}
-		for _, key := range []suiteKey{key, {tasks: key.tasks}} {
-			if _, exists := labels[key]; !exists {
-				labels[key] = strings.TrimSuffix(filepath.ToSlash(label), ".json")
+		label = strings.TrimSuffix(filepath.ToSlash(label), ".json")
+		// Two files with one task set and matrix would label each other's
+		// records; only the task-set fallback may be shared, and the first
+		// file in walk order keeps it.
+		if other, exists := labels[key]; exists {
+			return fmt.Errorf("suites/%s.json and suites/%s.json have the same task IDs and matrix variant names", other, label)
+		}
+		for _, k := range []suiteKey{key, {tasks: key.tasks}} {
+			if _, exists := labels[k]; !exists {
+				labels[k] = label
 			}
 		}
 		return nil
