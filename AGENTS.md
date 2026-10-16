@@ -25,8 +25,9 @@ steps for adding a suite; read it before writing or changing a suite.
   never remove or "clean" the comment: it is the test.
 - `fixtures/real/` holds code cut from closed issues of this repository and harness, frozen
   before the fix, so several packages carry their real bug and some functions are stubs. In an
-  eval worktree a task that asks you to fix or implement one is the test: do it. Anywhere else,
-  leave them as they are.
+  eval worktree a task that asks you to change or add files there (a fix, an implementation,
+  tests, a review, a plan, answers, a workflow) is the test: do it. Anywhere else, leave them
+  as they are.
 - Never edit a `checks/*.go.txt` to make a solution pass; the gates fail when they change.
 
 ## Running evals
