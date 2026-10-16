@@ -244,10 +244,11 @@ func shownPath(p string) string {
 // ESC 8, ESC =), and the 8-bit CSI with its parameters.
 var controls = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)|[ -/]*[0-~])|\x{9b}[0-?]*[ -/]*[@-~]`)
 
-// bidi holds the Unicode controls that reorder how text around them is
-// displayed (marks, embeddings, overrides, isolates); gate output keeps none.
+// bidi holds the Unicode Bidi_Control characters, which reorder how the text
+// around them is displayed (marks, embeddings, overrides, isolates); gate
+// output keeps none. They are written as escapes so the source shows them.
 func bidi(r rune) bool {
-	return r == '‎' || r == '‏' || r >= '‪' && r <= '‮' || r >= '⁦' && r <= '⁩'
+	return r == '\u061c' || r == '\u200e' || r == '\u200f' || r >= '\u202a' && r <= '\u202e' || r >= '\u2066' && r <= '\u2069'
 }
 
 func cell(s string) string {

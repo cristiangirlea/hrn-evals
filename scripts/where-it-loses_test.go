@@ -155,8 +155,9 @@ func TestCellEscapes(t *testing.T) {
 		{"save and restore cursor", "\x1b7a\x1b8b", "ab"},
 		{"keypad mode", "\x1b=x", "x"},
 		{"8-bit CSI with parameters", "\u009b31mred\u009b0m", "red"},
-		{"bidi override and isolate", "a‮b⁦c⁩d‏e", "abcde"},
-		{"invalid UTF-8", "a\xffb", "a�b"},
+		{"bidi override and isolate", "a\u202eb\u2066c\u2069d\u200fe", "abcde"},
+		{"Arabic letter mark", "a\u061cb", "ab"},
+		{"invalid UTF-8", "a\xffb", "a\ufffdb"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := cell(tc.input); got != tc.want {
