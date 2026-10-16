@@ -38,7 +38,7 @@
       "gate": [
         "test -s fixtures/purposes/review/REVIEW.md || { echo 'REVIEW.md is missing or empty'; exit 1; }",
         "grep -iE '(^|[^0-9])(9|1[0-5])([^0-9]|$)' fixtures/purposes/review/REVIEW.md | grep -qiE '(off[- ]by[- ]one|out of range|bounds|<=|panic)' || { echo 'review does not identify the off-by-one at line 11'; exit 1; }",
-        "grep -iE '(^|[^0-9])(1[89]|2[01])([^0-9]|$)' fixtures/purposes/review/REVIEW.md | grep -qiE '(unchecked|ignor|unhandled|missing error|lack|(not|never|n.t)( being)? (check|handl)|dropped|discard|swallow|thrown away|blank identifier)' || { echo 'review does not identify the unchecked error at line 19'; exit 1; }",
+        "grep -iE '(^|[^0-9])(1[89]|2[01])([^0-9]|$)' fixtures/purposes/review/REVIEW.md | grep -qiE '(unchecked|ignor|unhandled|missing error|lack|(not|never|n.t)( being)? (check|handl)|dropped|discard|swallow|thrown away|blank identifier|no error check(ing)? (on|for|of))' || { echo 'review does not identify the unchecked error at line 19'; exit 1; }",
         "grep -iE '(^|[^0-9])(2[4-9]|3[0-6])([^0-9]|$)' fixtures/purposes/review/REVIEW.md | grep -qiE '(\\brace\\b|concurrent|\\block\\b|\\bmutex\\b|unsynchroni)' || { echo 'review does not identify the race at line 31'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/purposes/review/review.go || { echo 'review.go was changed'; exit 1; }"
       ]
@@ -65,7 +65,7 @@
         "w=$(wc -w < fixtures/purposes/plan/PLAN-ANSWER.md); [ \"$w\" -le 400 ] || { echo \"too long: $w words\"; exit 1; }",
         "grep -q 'StatusHandler' fixtures/purposes/plan/PLAN-ANSWER.md || { echo 'plan does not name StatusHandler'; exit 1; }",
         "[ \"$(grep -cE '^[[:space:]]*([0-9]+[.)]|[-*+])[[:space:]]' fixtures/purposes/plan/PLAN-ANSWER.md)\" -ge 3 ] || { echo 'plan needs at least three numbered or bulleted steps'; exit 1; }",
-        "{ grep -qiE '\\btest(s|ing|ed)?\\b|_test\\.go' fixtures/purposes/plan/PLAN-ANSWER.md || grep -qE '\\bTest[A-Z][[:alnum:]_]*\\b' fixtures/purposes/plan/PLAN-ANSWER.md; } || { echo 'plan does not mention a test'; exit 1; }"
+        "{ grep -qiE '\\btest(s|ing|ed)?\\b|_test\\.go|httptest' fixtures/purposes/plan/PLAN-ANSWER.md || grep -qE '\\bTest[A-Z][[:alnum:]_]*\\b' fixtures/purposes/plan/PLAN-ANSWER.md; } || { echo 'plan does not mention a test'; exit 1; }"
       ]
     },
     {
@@ -73,8 +73,8 @@
       "prompt": "Add a GitHub Actions workflow at fixtures/purposes/ops/.github/workflows/ci.yml that runs go vet and go test on ubuntu-latest and windows-latest. The workflow belongs to the Go module in fixtures/purposes/ops as if that directory were its own repository: the checkout root is the module, so run the commands there, with no working-directory or cd into fixtures/. Change nothing else under the fixture. Do not run git.",
       "gate": [
         "test -f fixtures/purposes/ops/.github/workflows/ci.yml || { echo 'ci.yml is missing'; exit 1; }",
-        "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -qE '(runs-on|os|runner|platform):.*ubuntu-latest|^[[:space:]]*-[[:space:]]*.?ubuntu-latest' || { echo 'ci.yml does not run on ubuntu-latest: it must be a runs-on or matrix os value'; exit 1; }",
-        "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -qE '(runs-on|os|runner|platform):.*windows-latest|^[[:space:]]*-[[:space:]]*.?windows-latest' || { echo 'ci.yml does not run on windows-latest: it must be a runs-on or matrix os value'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -qE '(^|[[:space:]{,-])(runs-on|os|runner|platform):.*ubuntu-latest|^[[:space:]]*-[[:space:]]*.?ubuntu-latest' || { echo 'ci.yml does not run on ubuntu-latest: it must be a runs-on or matrix os value'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -qE '(^|[[:space:]{,-])(runs-on|os|runner|platform):.*windows-latest|^[[:space:]]*-[[:space:]]*.?windows-latest' || { echo 'ci.yml does not run on windows-latest: it must be a runs-on or matrix os value'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -q 'go vet' || { echo 'ci.yml is missing go vet outside comments'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -q 'go test' || { echo 'ci.yml is missing go test outside comments'; exit 1; }",
         "grep -qE '^[[:space:]]*on:' fixtures/purposes/ops/.github/workflows/ci.yml || { echo 'ci.yml is missing on:'; exit 1; }",
@@ -84,6 +84,7 @@
         "grep -q 'actions/checkout' fixtures/purposes/ops/.github/workflows/ci.yml || { echo 'ci.yml is missing actions/checkout'; exit 1; }",
         "! sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -q 'fixtures/' || { echo 'ci.yml points into fixtures/: the module is the checkout root'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/purposes/ops ':(exclude)fixtures/purposes/ops/.github/workflows/ci.yml' || { echo 'ops fixture changed outside ci.yml'; exit 1; }",
+        "! git ls-files --others -- fixtures/purposes/ops | grep -q '\\.gitignore$' || { echo 'a new .gitignore under the ops fixture could hide extra files'; exit 1; }",
         "extra=$(git ls-files --others --exclude-standard -- fixtures/purposes/ops ':(exclude)fixtures/purposes/ops/.github/workflows/ci.yml') || { echo 'could not check new ops files'; exit 1; }; [ -z \"$extra\" ] || { echo \"unexpected new ops files: $extra\"; exit 1; }"
       ]
     }
