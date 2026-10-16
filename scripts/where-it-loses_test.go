@@ -230,18 +230,22 @@ func TestUnnamedSuiteFix(t *testing.T) {
 		}
 		return e
 	}
+	// Records as hrn writes them: a table row for every task and variant.
 	const matrix = `"matrix":[{"name":"small"},{"name":"large"}]`
-	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"b"},{"id":"a"}],` + matrix + `}}`)
+	const variants = `"variants":[{"name":"small"},{"name":"large"}]`
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"b"},{"id":"a"}],` + matrix + `},"table":{` + variants + `,"tasks":[` +
+		`{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1},` +
+		`{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}]}}`)
 	task := taskResult{Task: "a", Variant: "small", Total: 1}
-	for _, tc := range []struct{ name, spec, variant, want string }{
-		{"same set reordered", `[{"id":"a"},{"id":"b"}]`, "small", "fixed in eval later"},
+	for _, tc := range []struct{ name, spec, rows, want string }{
+		{"same set reordered", `[{"id":"a"},{"id":"b"}]`, `{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","total":1},{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}`, "fixed in eval later"},
 		// A one-task run with task a defined as before would be a re-run of
 		// the cell; this one changes it.
-		{"different set", `[{"id":"a","prompt":"changed"}]`, "small", ""},
-		{"other variant", `[{"id":"a"},{"id":"b"}]`, "large", ""},
+		{"different set", `[{"id":"a","prompt":"changed"}]`, `{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","total":1}`, ""},
+		{"other variant", `[{"id":"a"},{"id":"b"}]`, `{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1},{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":{"tasks":` + tc.spec + `,` + matrix + `},"table":{"tasks":[{"task":"a","variant":"` + tc.variant + `","passed":1,"total":1}]}}`)
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":{"tasks":` + tc.spec + `,` + matrix + `},"table":{` + variants + `,"tasks":[` + tc.rows + `]}}`)
 			if got := fixedIn([]evalRecord{later}, old, task); got != tc.want {
 				t.Errorf("fixedIn = %q, want %q", got, tc.want)
 			}
@@ -633,14 +637,13 @@ func TestRuleSentenceMatchesComment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	comment := ""
+	comments := map[string]string{}
 	for _, c := range file.Comments {
-		if text := c.Text(); strings.HasPrefix(text, "sameCell reports") {
-			comment = strings.Join(strings.Fields(text), " ")
+		for _, prefix := range []string{"sameCell reports", "fixedIn names", "suiteLabels reads"} {
+			if text := c.Text(); strings.HasPrefix(text, prefix) {
+				comments[prefix] = strings.Join(strings.Fields(text), " ")
+			}
 		}
-	}
-	if comment == "" {
-		t.Fatal("sameCell's comment not found")
 	}
 	home := t.TempDir()
 	if err := os.Mkdir(filepath.Join(home, "evals"), 0755); err != nil {
@@ -654,17 +657,34 @@ func TestRuleSentenceMatchesComment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, clause := range []string{
-		"top-level fields apart from dir, parallel and repeats",
-		"inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec",
-		"is matched by the name hrn gives it, backend[-model][-effort]",
-		"the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit",
+	// Each comment explains a part of the page's preamble; every clause must
+	// be in both.
+	for prefix, clauses := range map[string][]string{
+		"sameCell reports": {
+			"top-level fields apart from dir, parallel and repeats",
+			"inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec",
+			"is matched by the name hrn gives it, backend[-model][-effort]",
+			"the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit",
+		},
+		"fixedIn names": {
+			"a later run of the same suite (the same task ID set and matrix variant names",
+		},
+		"suiteLabels reads": {
+			"file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs",
+		},
 	} {
-		if !strings.Contains(string(b), clause) {
-			t.Errorf("the page's rule sentence lacks %q", clause)
+		comment, ok := comments[prefix]
+		if !ok {
+			t.Errorf("no comment starting %q", prefix)
+			continue
 		}
-		if !strings.Contains(comment, clause) {
-			t.Errorf("sameCell's comment lacks %q", clause)
+		for _, clause := range clauses {
+			if !strings.Contains(string(b), clause) {
+				t.Errorf("the page's preamble lacks %q", clause)
+			}
+			if !strings.Contains(comment, clause) {
+				t.Errorf("the comment %q... lacks %q", prefix, clause)
+			}
 		}
 	}
 }
@@ -764,5 +784,19 @@ func TestShownPath(t *testing.T) {
 		if got := shownPath(in); got != want {
 			t.Errorf("shownPath(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// The repository's own suites must label without a clash, so that a suite PR
+// adding a file with another file's task IDs and matrix fails CI rather than
+// the owner's next regeneration of the page.
+func TestRepositorySuitesLabel(t *testing.T) {
+	t.Chdir("..")
+	labels, err := suiteLabels()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(labels.labels) == 0 {
+		t.Fatal("no suite under suites/ was labelled")
 	}
 }

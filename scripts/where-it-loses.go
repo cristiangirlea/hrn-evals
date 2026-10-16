@@ -318,6 +318,9 @@ func (s suiteIndex) ours(e evalRecord) bool {
 	return false
 }
 
+// suiteLabels reads the files under suites/. The page labels a suite by the
+// file under suites/ matching their task ID set and matrix variant names,
+// falling back to the task ID set alone, then joined task IDs.
 func suiteLabels() (suiteIndex, error) {
 	labels := make(map[suiteKey]string)
 	tasks := make(map[string]bool)
