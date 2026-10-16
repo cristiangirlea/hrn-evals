@@ -61,12 +61,18 @@ func TestRunAll(t *testing.T) {
 			t.Skip("neither sha256sum nor shasum is on PATH")
 		}
 	}
-	// The user's global git config (core.excludesFile above all) must not
-	// decide what counts as dirty in the sandbox.
-	env := append(os.Environ(), "BASH_ENV=", "ENV=", "GIT_CONFIG_GLOBAL=/dev/null")
+	// The user's global git config and global ignore file must not decide
+	// what counts as dirty in the sandbox: GIT_CONFIG_GLOBAL stops
+	// ~/.gitconfig (and its core.excludesFile), and an empty XDG_CONFIG_HOME
+	// stops the default ignore file, ~/.config/git/ignore. Read at each run,
+	// so a test can set the user's side first.
+	sandboxEnv := func(t *testing.T) []string {
+		return append(os.Environ(), "BASH_ENV=", "ENV=", "GIT_CONFIG_GLOBAL=/dev/null", "XDG_CONFIG_HOME="+t.TempDir())
+	}
 	run := func(t *testing.T, c runAllCase) (string, string, int, string) {
 		t.Helper()
 		root := t.TempDir()
+		env := sandboxEnv(t)
 		write := func(name, content string) {
 			t.Helper()
 			path := filepath.Join(root, name)
@@ -197,6 +203,27 @@ fi
 			}
 		})
 	}
+	t.Run("untracked file under a global ignore", func(t *testing.T) {
+		// The user's side ignores the untracked file both ways git looks
+		// for a global ignore; the sandbox must still see it.
+		xdg, home := t.TempDir(), t.TempDir()
+		ignore := filepath.Join(xdg, "git", "ignore")
+		if err := os.MkdirAll(filepath.Dir(ignore), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(ignore, []byte("new.txt\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[core]\n\texcludesFile = "+filepath.ToSlash(ignore)+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("XDG_CONFIG_HOME", xdg)
+		t.Setenv("HOME", home)
+		out, calls, code, _ := run(t, runAllCase{untracked: true})
+		if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
 	t.Run("shasum fallback", func(t *testing.T) {
 		needHash(t)
 		out, calls, code, _ := run(t, runAllCase{hash: "shasum"})
