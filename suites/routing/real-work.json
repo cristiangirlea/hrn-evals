@@ -1,0 +1,280 @@
+{
+  "dir": "../..",
+  "mode": "yolo",
+  "parallel": 3,
+  "max_turns": 25,
+  "timeout": "15m",
+  "matrix": [
+    {
+      "name": "sol-medium",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "effort": "medium"
+    },
+    {
+      "name": "sonnet-medium",
+      "backend": "claude",
+      "model": "sonnet",
+      "effort": "medium"
+    },
+    {
+      "name": "luna-low",
+      "backend": "codex",
+      "model": "gpt-6-luna",
+      "effort": "low"
+    },
+    {
+      "name": "haiku-low",
+      "backend": "claude",
+      "model": "haiku",
+      "effort": "low"
+    }
+  ],
+  "repeats": 3,
+  "tasks": [
+    {
+      "id": "implement-variant-name",
+      "prompt": "Implement DisplayName in fixtures/real/variantname/name.go: a variant with a name is called by it, and one without is called by its backend, model and effort joined with hyphens, leaving out an empty model or effort. Then implement Validate as fixtures/real/variantname/REQUIREMENTS.md describes. Do not change REQUIREMENTS.md or the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/variantname/REQUIREMENTS.md || { echo 'REQUIREMENTS.md was changed'; exit 1; }",
+        "cp fixtures/real/checks/variantname_test.go.txt fixtures/real/variantname/variantname_hidden_test.go || { echo 'could not install the hidden test variantname'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/variantname/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/variantname/ || { echo 'DisplayName or Validate does not meet the requirements'; exit 1; }"
+      ]
+    },
+    {
+      "id": "implement-event-line-limit",
+      "prompt": "Make ReadEvents in fixtures/real/events/client.go report an event line over its 1 MiB limit as an error that says \"event line exceeds 1 MiB limit\" and wraps bufio.ErrTooLong. Then resolve what fixtures/real/events/ISSUE.md reports about Watch. Keep every other behaviour of the package. Do not change ISSUE.md or the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/events/ISSUE.md || { echo 'ISSUE.md was changed'; exit 1; }",
+        "cp fixtures/real/checks/events_limit_test.go.txt fixtures/real/events/events_limit_hidden_test.go || { echo 'could not install the hidden test events_limit'; exit 1; }",
+        "cp fixtures/real/checks/events_headers_test.go.txt fixtures/real/events/events_headers_hidden_test.go || { echo 'could not install the hidden test events_headers'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/events/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/events/ || { echo 'the limit error, the stop in Watch or the other behaviour is wrong'; exit 1; }"
+      ]
+    },
+    {
+      "id": "implement-estimate-mark",
+      "prompt": "Implement Cost in fixtures/real/estimate/cost.go for the losses page's cost cells. Every cost hrn or a CLI reports is a list-price estimate, never a bill, so a non-zero cost reads as the number, written with strconv.FormatFloat(n, 'f', -1, 64), followed by \" (estimate)\", and a zero reads \"0\". A variant whose total Cost is zero and that hrn did not estimate (CostIsEstimate false) is unpriced, since hrn had no price for it: every one of its costs reads \"unpriced\". Do not change the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "cp fixtures/real/checks/estimate_test.go.txt fixtures/real/estimate/estimate_hidden_test.go || { echo 'could not install the hidden test estimate'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/estimate/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/estimate/ || { echo 'Cost does not format the cells as asked'; exit 1; }"
+      ]
+    },
+    {
+      "id": "implement-shown-path",
+      "prompt": "Implement Shown in fixtures/real/shownpath/shownpath.go. The losses page prints the command that produced it, and a --home or --out path on that command can name the user's account. An absolute or home-relative path, in Unix or Windows form (/x, ~/x, C:\\x, C:/x, \\\\server\\share), whatever the OS the page is made on, is shown as .../ followed by its last element, ignoring trailing separators; any other value is shown as it is. Do not change the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "cp fixtures/real/checks/shownpath_test.go.txt fixtures/real/shownpath/shownpath_hidden_test.go || { echo 'could not install the hidden test shownpath'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/shownpath/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/shownpath/ || { echo 'Shown does not hide local paths as asked'; exit 1; }"
+      ]
+    },
+    {
+      "id": "debug-system32-case",
+      "prompt": "On a PC whose PATH spells the Windows folder C:\\WINDOWS\\system32, hrn picks WSL's bash.exe launcher instead of Git Bash, so its commands run in WSL's filesystem view. InSystem32 in fixtures/real/wslpath/wslpath.go makes that decision. Investigate why it goes wrong and fix it for either path separator. Do not change the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "cp fixtures/real/checks/wslpath_test.go.txt fixtures/real/wslpath/wslpath_hidden_test.go || { echo 'could not install the hidden test wslpath'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/wslpath/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/wslpath/ || { echo 'InSystem32 still misjudges a path'; exit 1; }"
+      ]
+    },
+    {
+      "id": "debug-idle-zero",
+      "prompt": "Investigate this report: hrn gc --idle 0 should remove every build cache, yet it sometimes keeps one that a build wrote a moment ago, and --free-below with a minimum idle time of 0 can skip that cache the same way. The decisions are made in fixtures/real/cacheage/cacheage.go. Find the cause and fix it wherever it applies. Do not change the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "cp fixtures/real/checks/cacheage_test.go.txt fixtures/real/cacheage/cacheage_hidden_test.go || { echo 'could not install the hidden test cacheage'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/cacheage/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/cacheage/ || { echo 'a cache written just now is still not taken, or another decision changed'; exit 1; }"
+      ]
+    },
+    {
+      "id": "debug-quoted-path",
+      "prompt": "Investigate this report: hrn's run viewer shortens a program's path to its file name, but it leaves \"C:\\Program Files\\Bob's Tools\\tool.exe\" --help as it is, in plain text and in JSON text alike, and in JSON text a single-quoted path that is never closed runs on into the next field. Program in fixtures/real/quotedpath/quotedpath.go reads such a path; its comment says what i and j are. Fix it. Do not change the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "cp fixtures/real/checks/quotedpath_test.go.txt fixtures/real/quotedpath/quotedpath_hidden_test.go || { echo 'could not install the hidden test quotedpath'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/quotedpath/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/quotedpath/ || { echo 'Program still misreads a quoted path, or a case that worked broke'; exit 1; }"
+      ]
+    },
+    {
+      "id": "test-system32",
+      "prompt": "Write a table-driven test for InSystem32 in fixtures/real/system32/system32_test.go. Cover the folder name in different cases, both path separators, a folder whose name only starts with System32, and a bare file name. Do not change system32.go. Make sure go test ./fixtures/real/system32/ passes. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/system32/system32.go || { echo 'system32.go was changed'; exit 1; }",
+        "test -f fixtures/real/system32/system32_test.go || { echo 'system32_test.go is missing'; exit 1; }",
+        "go test -count=1 ./fixtures/real/system32/ || { echo 'the tests fail on the correct InSystem32'; exit 1; }",
+        "git checkout -- fixtures/real/system32/system32.go && sed -i 's/strings.EqualFold(folder, \"System32\")/folder == \"System32\"/' fixtures/real/system32/system32.go && ! git diff --quiet -- fixtures/real/system32/system32.go && ! go test -count=1 ./fixtures/real/system32/ >/dev/null 2>&1 || { echo 'the tests still pass when the folder name must match in case: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/system32/system32.go && sed -i 's/strings.EqualFold(folder, \"System32\")/strings.HasPrefix(strings.ToLower(folder), \"system32\")/' fixtures/real/system32/system32.go && ! git diff --quiet -- fixtures/real/system32/system32.go && ! go test -count=1 ./fixtures/real/system32/ >/dev/null 2>&1 || { echo 'the tests still pass when a folder that only starts with System32 counts: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/system32/system32.go && sed -i 's/^const seps = .*/const seps = backslash/' fixtures/real/system32/system32.go && ! git diff --quiet -- fixtures/real/system32/system32.go && ! go test -count=1 ./fixtures/real/system32/ >/dev/null 2>&1 || { echo 'the tests still pass when a forward slash is no separator: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/system32/system32.go"
+      ]
+    },
+    {
+      "id": "test-idle-age",
+      "prompt": "Write a table-driven test for AgeAt in fixtures/real/idleage/idleage_test.go, covering a write an hour before now, a write at now, and a write a few milliseconds after now. Do not change idleage.go. Make sure go test ./fixtures/real/idleage/ passes. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/idleage/idleage.go || { echo 'idleage.go was changed'; exit 1; }",
+        "test -f fixtures/real/idleage/idleage_test.go || { echo 'idleage_test.go is missing'; exit 1; }",
+        "go test -count=1 ./fixtures/real/idleage/ || { echo 'the tests fail on the correct AgeAt'; exit 1; }",
+        "git checkout -- fixtures/real/idleage/idleage.go && sed -i 's/; d > 0 {/; true {/' fixtures/real/idleage/idleage.go && ! git diff --quiet -- fixtures/real/idleage/idleage.go && ! go test -count=1 ./fixtures/real/idleage/ >/dev/null 2>&1 || { echo 'the tests still pass when a write after now gives a negative age: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/idleage/idleage.go && sed -i 's|return d$|return d / 2|' fixtures/real/idleage/idleage.go && ! git diff --quiet -- fixtures/real/idleage/idleage.go && ! go test -count=1 ./fixtures/real/idleage/ >/dev/null 2>&1 || { echo 'the tests still pass when the age of a past write is wrong: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/idleage/idleage.go"
+      ]
+    },
+    {
+      "id": "test-cell-escape",
+      "prompt": "Write tests for Cell in fixtures/real/cellescape/cell_test.go. Cell must keep a Markdown table intact whatever a gate printed: cover a pipe, a line break and an HTML tag. Do not change cell.go. Make sure go test ./fixtures/real/cellescape/ passes. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/cellescape/cell.go || { echo 'cell.go was changed'; exit 1; }",
+        "test -f fixtures/real/cellescape/cell_test.go || { echo 'cell_test.go is missing'; exit 1; }",
+        "go test -count=1 ./fixtures/real/cellescape/ || { echo 'the tests fail on the correct Cell'; exit 1; }",
+        "git checkout -- fixtures/real/cellescape/cell.go && sed -i 's/\"|\", \"&#124;\", //' fixtures/real/cellescape/cell.go && ! git diff --quiet -- fixtures/real/cellescape/cell.go && ! go test -count=1 ./fixtures/real/cellescape/ >/dev/null 2>&1 || { echo 'the tests still pass when a pipe is left as it is: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/cellescape/cell.go && sed -i 's/\"\\\\n\", \"<br>\", //' fixtures/real/cellescape/cell.go && ! git diff --quiet -- fixtures/real/cellescape/cell.go && ! go test -count=1 ./fixtures/real/cellescape/ >/dev/null 2>&1 || { echo 'the tests still pass when a line break is left as it is: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/cellescape/cell.go && sed -i 's/s = html.EscapeString(s)/_ = html.EscapeString/' fixtures/real/cellescape/cell.go && ! git diff --quiet -- fixtures/real/cellescape/cell.go && ! go test -count=1 ./fixtures/real/cellescape/ >/dev/null 2>&1 || { echo 'the tests still pass when HTML is not escaped: they do not test it'; exit 1; }",
+        "git checkout -- fixtures/real/cellescape/cell.go"
+      ]
+    },
+    {
+      "id": "research-eval-expand",
+      "prompt": "Explain how hrn expands an eval spec into cells by answering from fixtures/real/research/eval.go.txt, an excerpt of hrn's source, in fixtures/real/research/ANSWERS-EVAL.md, one numbered answer per question: 1. How many times does each cell run when an eval spec leaves repeats out? 2. What name does a matrix variant get when it has no name, the backend codex, no model and the effort high? Then answer the questions in fixtures/real/research/QUESTIONS-EVAL.md the same way, continuing the numbering. Do not change the source or the questions. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/research/eval.go.txt || { echo 'eval.go.txt was changed'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/research/QUESTIONS-EVAL.md || { echo 'QUESTIONS-EVAL.md was changed'; exit 1; }",
+        "test -s fixtures/real/research/ANSWERS-EVAL.md || { echo 'fixtures/real/research/ANSWERS-EVAL.md is missing or empty'; exit 1; }",
+        "awk -v n=1 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-EVAL.md | tr '\\n' ' ' | grep -qiE '\\b(once|one|1|single)\\b' || { echo 'answer 1 does not say each cell runs once'; exit 1; }",
+        "awk -v n=2 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-EVAL.md | tr '\\n' ' ' | grep -qF 'codex-high' || { echo 'answer 2 does not name codex-high'; exit 1; }",
+        "awk -v n=3 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-EVAL.md | tr '\\n' ' ' | grep -qiF 'retry does not belong in an eval' || { echo 'answer 3 does not quote the retry error'; exit 1; }",
+        "awk -v n=4 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-EVAL.md | tr '\\n' ' ' | grep -qiE 'task.*spec.*default' || { echo 'answer 4 does not give the task, then the spec, then the default backend'; exit 1; }"
+      ]
+    },
+    {
+      "id": "research-gate-timeout",
+      "prompt": "Explain how hrn bounds and kills gate commands by answering from fixtures/real/research/batch.go.txt, excerpts of hrn's source, in fixtures/real/research/ANSWERS-BATCH.md, one numbered answer per question: 1. How long may a gate command run when neither the batch spec nor the task sets gate_timeout? 2. What is the largest gate_timeout a spec may set? 3. When a task and its spec both set gate_timeout, which applies? 4. What exit code does hrn record for a gate it killed, and what does the gate result's Killed field hold when gate_timeout ran out? Do not change the source. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/research/batch.go.txt || { echo 'batch.go.txt was changed'; exit 1; }",
+        "test -s fixtures/real/research/ANSWERS-BATCH.md || { echo 'fixtures/real/research/ANSWERS-BATCH.md is missing or empty'; exit 1; }",
+        "awk -v n=1 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-BATCH.md | tr '\\n' ' ' | grep -qiE '\\b15 ?(m|min|mins|minutes)\\b' || { echo 'answer 1 does not say 15 minutes'; exit 1; }",
+        "awk -v n=2 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-BATCH.md | tr '\\n' ' ' | grep -qiE '\\b24 ?(h|hours?)\\b' || { echo 'answer 2 does not say 24 hours'; exit 1; }",
+        "a=$(awk -v n=3 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-BATCH.md | tr '\\n' ' '); { echo \"$a\" | grep -qiE \"task('s)?( own)?[^.]*(wins|applies|takes precedence|overrides|is used)\" || { echo \"$a\" | grep -qi task && ! echo \"$a\" | grep -qi spec; }; } && ! echo \"$a\" | grep -qiE \"spec('s)?( own)?( value| gate_timeout| setting)? (wins|applies|takes precedence|overrides|is used)\" || { echo 'answer 3 does not say the task wins'; exit 1; }",
+        "awk -v n=4 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-BATCH.md | tr '\\n' ' ' | grep -qE '(^|[^0-9])-1\\b' || { echo 'answer 4 does not give exit code -1'; exit 1; }",
+        "awk -v n=4 '/^([*#]+[[:space:]]*)?[0-9]+[.):]/ { s=$0; gsub(/^[*#]*[[:space:]]*/, \"\", s); p = (s+0 == n); if (p) sub(/^([*#]+[[:space:]]*)?[0-9]+[.):][*]*/, \"\") } p' fixtures/real/research/ANSWERS-BATCH.md | tr '\\n' ' ' | grep -qiE '(^|[^_a-z])timeout\\b|KilledTimeout' || { echo 'answer 4 does not give the timeout value of Killed'; exit 1; }"
+      ]
+    },
+    {
+      "id": "review-idle-age",
+      "prompt": "Review the code in fixtures/real/review-idle/idle.go and write your findings to fixtures/real/review-idle/REVIEW.md, one finding per line with its line number. Do not change the source. Do not run git.",
+      "gate": [
+        "test -s fixtures/real/review-idle/REVIEW.md || { echo 'fixtures/real/review-idle/REVIEW.md is missing or empty'; exit 1; }",
+        "[ -n \"$(grep -iE '(^|[^0-9])(17|18|19|20|21)([^0-9]|$)' fixtures/real/review-idle/REVIEW.md | grep -iE '(negative|future|after now|ahead|clock|resolution|skew|clamp|below zero|less than (zero|0)|< ?0)')\" ] || { echo 'the review does not find the negative age at line 19'; exit 1; }",
+        "[ -n \"$(grep -iE '(^|[^0-9])(29|30|31|32|33)([^0-9]|$)' fixtures/real/review-idle/REVIEW.md | grep -iE '(negative|future|after now|ahead|clock|resolution|skew|clamp|below zero|less than (zero|0)|< ?0)')\" ] || { echo 'the review does not find the same negative age at line 31'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/review-idle/idle.go || { echo 'idle.go was changed'; exit 1; }"
+      ]
+    },
+    {
+      "id": "review-event-retry",
+      "prompt": "Review the code in fixtures/real/review-retry/watch.go and write your findings to fixtures/real/review-retry/REVIEW.md, one finding per line with its line number. Do not change the source. Do not run git.",
+      "gate": [
+        "test -s fixtures/real/review-retry/REVIEW.md || { echo 'fixtures/real/review-retry/REVIEW.md is missing or empty'; exit 1; }",
+        "[ -n \"$(grep -iE '(^|[^0-9])(62|63|64|65|66|67|68|69|70|71|80|81|82|83|84|85|98|99|100|143|144|145)([^0-9]|$)' fixtures/real/review-retry/REVIEW.md | grep -iE '(too long|ErrTooLong|1 ?MiB|oversiz|limit|buffer|large|huge|long line)' | grep -iE '(retr|again|reconnect|loop|forever|for ever|repeat|30|refetch|re-fetch)')\" ] || { echo 'the review does not find that Watch retries an oversized event line instead of stopping'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/review-retry/watch.go || { echo 'watch.go was changed'; exit 1; }"
+      ]
+    },
+    {
+      "id": "refactor-suite-key",
+      "prompt": "Refactor fixtures/real/suitekey/suitekey.go: it removes duplicates and sorts in two places. Make one unexported helper do that for both Tasks and Key, without changing what they return. Keep both exported functions and their signatures. Do not change the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "cp fixtures/real/checks/suitekey_test.go.txt fixtures/real/suitekey/suitekey_hidden_test.go || { echo 'could not install the hidden test suitekey'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/suitekey/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/suitekey/ || { echo 'Tasks or Key changed behaviour'; exit 1; }",
+        "[ \"$(grep -cF 'make(map[string]bool)' fixtures/real/suitekey/suitekey.go)\" -le 1 ] || { echo 'the duplicate set is still built twice'; exit 1; }",
+        "[ \"$(grep -cE 'sort\\.Strings\\(|slices\\.Sort\\(' fixtures/real/suitekey/suitekey.go)\" -le 1 ] || { echo 'the sort is still done twice'; exit 1; }"
+      ]
+    },
+    {
+      "id": "refactor-request-headers",
+      "prompt": "Refactor fixtures/real/events/client.go: Request and Watch each build their HTTP request and set its Authorization header. Move that into one unexported helper that both use, without changing behaviour. Do not change ISSUE.md or the checks under fixtures/real/checks. Do not run git.",
+      "gate": [
+        "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/events/ISSUE.md || { echo 'ISSUE.md was changed'; exit 1; }",
+        "cp fixtures/real/checks/events_headers_test.go.txt fixtures/real/events/events_headers_hidden_test.go || { echo 'could not install the hidden test events_headers'; exit 1; }",
+        "go test -count=1 -run '^$' ./fixtures/real/events/ || { echo 'the package or a test file in it does not build'; exit 1; }",
+        "go test -count=1 -timeout 120s ./fixtures/real/events/ || { echo 'Request or Watch changed behaviour'; exit 1; }",
+        "[ \"$(grep -cF '\"Bearer \"' fixtures/real/events/client.go)\" -eq 1 ] || { echo 'the Authorization header is not set in one place'; exit 1; }",
+        "[ \"$(grep -cF 'http.NewRequestWithContext' fixtures/real/events/client.go)\" -eq 1 ] || { echo 'the request is not built in one place'; exit 1; }"
+      ]
+    },
+    {
+      "id": "plan-budget-guard",
+      "prompt": "Write a plan, as fixtures/real/plan-budget/PLAN-ANSWER.md, for adding a spending budget to RunAll in fixtures/real/plan-budget/runner.go, so that a batch stops starting tasks once their cost reaches a limit. Use at most 400 words, name RunAll, give at least three numbered or bulleted steps, include testing, and meet the constraints in fixtures/real/plan-budget/CONSTRAINTS.md. Do not change the code or the constraints. Do not run git.",
+      "gate": [
+        "test -s fixtures/real/plan-budget/PLAN-ANSWER.md || { echo 'fixtures/real/plan-budget/PLAN-ANSWER.md is missing or empty'; exit 1; }",
+        "w=$(wc -w < fixtures/real/plan-budget/PLAN-ANSWER.md); [ \"$w\" -le 400 ] || { echo \"too long: $w words\"; exit 1; }",
+        "grep -q 'RunAll' fixtures/real/plan-budget/PLAN-ANSWER.md || { echo 'the plan does not name RunAll'; exit 1; }",
+        "[ \"$(grep -cE '^[[:space:]]*([0-9]+[.)]|[-*+])[[:space:]]' fixtures/real/plan-budget/PLAN-ANSWER.md)\" -ge 3 ] || { echo 'the plan needs at least three numbered or bulleted steps'; exit 1; }",
+        "{ grep -qiE '\\btest(s|ing|ed)?\\b|_test\\.go|httptest' fixtures/real/plan-budget/PLAN-ANSWER.md || grep -qE '\\bTest[A-Z][[:alnum:]_]*\\b' fixtures/real/plan-budget/PLAN-ANSWER.md; } || { echo 'the plan does not mention a test'; exit 1; }",
+        "grep -qiE '(already|still|currently) (running|started|in progress)|in[- ]flight|running tasks|tasks (that are )?(running|started)' fixtures/real/plan-budget/PLAN-ANSWER.md || { echo 'the plan does not say what happens to the tasks already running'; exit 1; }",
+        "grep -qiE 'unreported|not reported|no cost|zero|\\$0|\\b0 (usd|dollars)|missing (cost|usage)|unknown cost|unpriced' fixtures/real/plan-budget/PLAN-ANSWER.md || { echo 'the plan does not say how a task with no reported cost is treated'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/plan-budget/runner.go || { echo 'runner.go was changed'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/plan-budget/CONSTRAINTS.md || { echo 'CONSTRAINTS.md was changed'; exit 1; }"
+      ]
+    },
+    {
+      "id": "plan-unpriced",
+      "prompt": "Write a plan, as fixtures/real/plan-unpriced/PLAN-ANSWER.md, for changing fixtures/real/plan-unpriced/compare.go so that a variant hrn has no price for is not ranked as the cheapest by its zero cost. Codex runs report a cost of 0 when hrn lacks their model's price. Use at most 300 words, name the function that ranks the pair, give at least three numbered or bulleted steps, say what such a pair is compared on instead, and include testing. Do not change compare.go. Do not run git.",
+      "gate": [
+        "test -s fixtures/real/plan-unpriced/PLAN-ANSWER.md || { echo 'fixtures/real/plan-unpriced/PLAN-ANSWER.md is missing or empty'; exit 1; }",
+        "w=$(wc -w < fixtures/real/plan-unpriced/PLAN-ANSWER.md); [ \"$w\" -le 300 ] || { echo \"too long: $w words\"; exit 1; }",
+        "grep -q 'cheaper' fixtures/real/plan-unpriced/PLAN-ANSWER.md || { echo 'the plan does not name cheaper'; exit 1; }",
+        "[ \"$(grep -cE '^[[:space:]]*([0-9]+[.)]|[-*+])[[:space:]]' fixtures/real/plan-unpriced/PLAN-ANSWER.md)\" -ge 3 ] || { echo 'the plan needs at least three numbered or bulleted steps'; exit 1; }",
+        "grep -qiE 'token' fixtures/real/plan-unpriced/PLAN-ANSWER.md || { echo 'the plan does not compare such a pair on tokens'; exit 1; }",
+        "{ grep -qiE '\\btest(s|ing|ed)?\\b|_test\\.go|httptest' fixtures/real/plan-unpriced/PLAN-ANSWER.md || grep -qE '\\bTest[A-Z][[:alnum:]_]*\\b' fixtures/real/plan-unpriced/PLAN-ANSWER.md; } || { echo 'the plan does not mention a test'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/plan-unpriced/compare.go || { echo 'compare.go was changed'; exit 1; }"
+      ]
+    },
+    {
+      "id": "ops-runner-workflow",
+      "prompt": "Add a GitHub Actions workflow at fixtures/real/ops-runner/.github/workflows/ci.yml that runs go vet and go test on Linux and on Windows, on push and on pull_request. The workflow belongs to the Go module in fixtures/real/ops-runner as if that directory were its own repository: the checkout root is the module. Which runners to use, and when, is in fixtures/real/ops-runner/RUNNERS.md. Change nothing else under the fixture. Do not run git.",
+      "gate": [
+        "test -f fixtures/real/ops-runner/.github/workflows/ci.yml || { echo 'ci.yml is missing'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE 'runs-on:[[:space:]]*.?\\$\\{\\{[[:space:]]*vars\\.CI_RUNNER[[:space:]]*\\}\\}' || { echo 'no job runs on vars.CI_RUNNER'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE 'runs-on:[[:space:]]*.?\\$\\{\\{[[:space:]]*vars\\.CI_RUNNER_WINDOWS[[:space:]]*\\}\\}' || { echo 'no job runs on vars.CI_RUNNER_WINDOWS'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE \"vars\\.CI_RUNNER[[:space:]]*!=[[:space:]]*''\" || { echo 'the Linux job does not run only when CI_RUNNER is set'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE \"vars\\.CI_RUNNER_WINDOWS[[:space:]]*!=[[:space:]]*''\" || { echo 'the Windows job does not run only when CI_RUNNER_WINDOWS is set'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE \"github\\.event_name[[:space:]]*!=[[:space:]]*'pull_request'\" || { echo 'the Windows job is not kept off pull requests'; exit 1; }",
+        "! sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qiE '(ubuntu|windows|macos)-(latest|[0-9])' || { echo 'ci.yml names a GitHub-hosted runner'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -q 'go vet' || { echo 'ci.yml is missing go vet outside comments'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -q 'go test' || { echo 'ci.yml is missing go test outside comments'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE '(^|[[:space:],[])push([[:space:]]*[]:,]|$)' || { echo 'ci.yml does not run on push'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE '(^|[[:space:],[])pull_request([[:space:]]*[]:,]|$)' || { echo 'ci.yml does not run on pull_request'; exit 1; }",
+        "! sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -q 'fixtures/' || { echo 'ci.yml points into fixtures/: the module is the checkout root'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/ops-runner ':(exclude)fixtures/real/ops-runner/.github/workflows/ci.yml' || { echo 'the fixture changed outside .github/workflows/ci.yml'; exit 1; }",
+        "extra=$(git ls-files --others --exclude-standard -- fixtures/real/ops-runner ':(exclude)fixtures/real/ops-runner/.github/workflows/ci.yml') || { echo 'could not list new files'; exit 1; }; [ -z \"$extra\" ] || { echo \"unexpected new files: $extra\"; exit 1; }"
+      ]
+    },
+    {
+      "id": "ops-dockerignore",
+      "prompt": "Write fixtures/real/ops-docker/.dockerignore so that the Docker build context, which is the fixtures/real/ops-docker directory, holds only what its Dockerfile builds from: no docs, scripts or local env files, and nothing a later change adds to the directory unless the Dockerfile needs it. Change nothing else under the fixture. Do not run git.",
+      "gate": [
+        "test -s fixtures/real/ops-docker/.dockerignore || { echo '.dockerignore is missing or empty'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | head -1 | grep -qxE '/?\\*{1,2}' || { echo '.dockerignore does not start by leaving everything out'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | grep -qxE '!/?go\\.mod' || { echo 'go.mod is not let back in'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | grep -qxE '!/?go\\.sum' || { echo 'go.sum is not let back in'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | grep -qxE '!/?cmd(/(\\*\\*)?)?' || { echo 'cmd is not let back in'; exit 1; }",
+        "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | grep -qxE '!/?internal(/(\\*\\*)?)?' || { echo 'internal is not let back in'; exit 1; }",
+        "! sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | grep -E '^!' | grep -qvxE '!/?(go\\.mod|go\\.sum|cmd(/(\\*\\*)?)?|internal(/(\\*\\*)?)?|Dockerfile|\\.dockerignore)' || { echo '.dockerignore lets in something the image does not build from'; exit 1; }",
+        "git diff --quiet HEAD -- fixtures/real/ops-docker ':(exclude)fixtures/real/ops-docker/.dockerignore' || { echo 'the fixture changed outside .dockerignore'; exit 1; }",
+        "extra=$(git ls-files --others --exclude-standard -- fixtures/real/ops-docker ':(exclude)fixtures/real/ops-docker/.dockerignore') || { echo 'could not list new files'; exit 1; }; [ -z \"$extra\" ] || { echo \"unexpected new files: $extra\"; exit 1; }"
+      ]
+    }
+  ]
+}

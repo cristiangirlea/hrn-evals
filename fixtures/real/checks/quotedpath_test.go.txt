@@ -1,0 +1,61 @@
+package quotedpath_test
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/quotedpath"
+)
+
+// shorten replaces the path that starts at root in s with its program name,
+// as the run viewer does, and leaves s alone when Program finds none.
+func shorten(t *testing.T, s, root string, windows bool) string {
+	t.Helper()
+	i := strings.Index(s, root)
+	if i < 0 {
+		t.Fatalf("root %q not in %q", root, s)
+	}
+	end, name := quotedpath.Program(s, i, i+len(root), windows)
+	if name == "" {
+		return s
+	}
+	return s[:i] + name + s[end:]
+}
+
+func TestWindowsPaths(t *testing.T) {
+	for _, tc := range []struct{ s, root, want string }{
+		{`"C:\Program Files\Git (Preview)\bin\bash.exe" -lc ls`, `C:\Program Files\`, `"bash.exe" -lc ls`},
+		{`'C:\Program Files\Tools [x64]\rg.exe' -n x`, `C:\Program Files\`, `'rg.exe' -n x`},
+		// Only the matching quote ends a quoted path.
+		{`"C:\Program Files\Bob's Tools\tool.exe" --help`, `C:\Program Files\`, `"tool.exe" --help`},
+		{`{"command":"\"C:\\Program Files\\Bob's Tools\\tool.exe\" --help"}`, `C:\\Program Files\\`, `{"command":"\"tool.exe\" --help"}`},
+		{`'C:\Program Files\Other Tools\tool.exe' --help`, `C:\Program Files\`, `'tool.exe' --help`},
+		{`{"command":"'C:\\Program Files\\Other Tools\\tool.exe' --help"}`, `C:\\Program Files\\`, `{"command":"'tool.exe' --help"}`},
+		// Unquoted, a space ends it, and a folder is no program.
+		{`C:\Program Files\Bob's Tools\tool.exe --help`, `C:\Program Files\`, `C:\Program Files\Bob's Tools\tool.exe --help`},
+		// Unterminated quotes stop at the input's end or a line end.
+		{`"C:\Program Files\Bob's Tools\tool.exe`, `C:\Program Files\`, `"tool.exe`},
+		{"\"C:\\Program Files\\Bob's Tools\nnext", `C:\Program Files\`, "\"C:\\Program Files\\Bob's Tools\nnext"},
+		// An unterminated single quote in JSON text stops at the string's end.
+		{`{"command":"'C:\\Windows\\System32\\cmd.exe","cwd":"D:\\work.dir"}`, `C:\\Windows\\System32\\`, `{"command":"'cmd.exe","cwd":"D:\\work.dir"}`},
+		// Two backslashes before the quote are an escaped backslash: the quote still ends the string.
+		{`["'C:\\Windows\\System32\\cmd.exe\\",1.5]`, `C:\\Windows\\System32\\`, `["'cmd.exe\\",1.5]`},
+	} {
+		if got := shorten(t, tc.s, tc.root, true); got != tc.want {
+			t.Errorf("shorten(%q) = %q, want %q", tc.s, got, tc.want)
+		}
+	}
+}
+
+func TestUnixPaths(t *testing.T) {
+	for _, tc := range []struct{ s, root, want string }{
+		{"/usr/local/bin/node script.js", "/usr/local/bin/", "node script.js"},
+		{`exec "/bin/sh" -c true`, "/bin/", `exec "sh" -c true`},
+		// A bare double quote ends a single-quoted path: in JSON text it closes the string.
+		{`{"command":"'/usr/bin/Bob\"s/tool' --help"}`, "/usr/bin/", `{"command":"'tool' --help"}`},
+	} {
+		if got := shorten(t, tc.s, tc.root, false); got != tc.want {
+			t.Errorf("shorten(%q) = %q, want %q", tc.s, got, tc.want)
+		}
+	}
+}

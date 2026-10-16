@@ -1,0 +1,51 @@
+package events_test
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/events"
+)
+
+func TestReadEventsNamesTheLimit(t *testing.T) {
+	input := "id: 1\ndata: " + strings.Repeat("x", 1<<20) + "\n\n"
+	_, err := events.ReadEvents(strings.NewReader(input), 0, io.Discard)
+	if !errors.Is(err, bufio.ErrTooLong) || !strings.Contains(err.Error(), "event line exceeds 1 MiB limit") {
+		t.Errorf("ReadEvents error = %v, want an error saying the event line exceeds the 1 MiB limit, wrapping bufio.ErrTooLong", err)
+	}
+	var out strings.Builder
+	last, err := events.ReadEvents(strings.NewReader("id: 2\ndata: {\"ok\":true}\n\n"), 0, &out)
+	if err != nil || last != 2 || out.String() != "{\"ok\":true}\n" {
+		t.Errorf("ReadEvents of a normal event = %d, %v, %q", last, err, out.String())
+	}
+}
+
+func TestWatchStopsOnOversizedEventLine(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "id: 1\ndata: "+strings.Repeat("x", 1<<20)+"\n\n")
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	err := events.New(server.URL, strings.Repeat("t", 64)).Watch(ctx, "/v1/jobs/j/events", 0, io.Discard)
+	if ctx.Err() != nil {
+		t.Fatalf("Watch reached the context deadline instead of returning the line error: %v", err)
+	}
+	if !errors.Is(err, bufio.ErrTooLong) || !strings.Contains(err.Error(), "1 MiB") {
+		t.Errorf("Watch error = %v, want the event line over the 1 MiB limit", err)
+	}
+	if got := requests.Load(); got != 1 {
+		t.Errorf("requests = %d, want 1", got)
+	}
+}

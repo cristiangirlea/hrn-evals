@@ -1,0 +1,133 @@
+// Excerpt of internal/eval/eval.go, harness a2a8cf2. Read-only material for the research tasks; not built.
+// Spec is a batch spec plus the two dimensions that make it an eval: the
+// matrix of variants to compare and how many times to repeat each cell.
+type Spec struct {
+	batch.Spec
+	Matrix  []Variant `json:"matrix"`
+	Repeats int       `json:"repeats,omitempty"` // default 1
+	// Judge, when set, scores every passing cell's diff against a rubric.
+	Judge *Judge `json:"judge,omitempty"`
+}
+
+// Variant is one cell of the matrix: what to run the task set with.
+type Variant struct {
+	Lean             *bool  `json:"lean,omitempty"`
+	ShapeTools       bool   `json:"shape_tools,omitempty"`
+	Retrieval        string `json:"retrieval,omitempty"`
+	RetrievalVersion string `json:"retrieval_version,omitempty"`
+	Name             string `json:"name,omitempty"` // default: backend[-model][-effort]
+	Backend          string `json:"backend,omitempty"`
+	Model            string `json:"model,omitempty"`
+	Effort           string `json:"effort,omitempty"`
+}
+
+func (v Variant) name() string {
+	if v.Name != "" {
+		return v.Name
+	}
+	parts := []string{v.Backend}
+	if v.Model != "" {
+		parts = append(parts, v.Model)
+	}
+	if v.Effort != "" {
+		parts = append(parts, v.Effort)
+	}
+	return strings.Join(parts, "-")
+}
+
+// Expand turns an eval spec into the batch that runs it: one task per task,
+// variant and repeat. Retry is deliberately nil, and no_switch set, because an
+// eval measures what a single attempt does; a retried attempt would score the
+// harness, not the backend, and a switched one the other backend.
+func Expand(spec Spec, evalID string) (batch.Spec, error) {
+	if len(spec.Matrix) == 0 {
+		return batch.Spec{}, fmt.Errorf("matrix is empty: an eval needs at least one variant to compare")
+	}
+	if spec.Repeats < 0 {
+		return batch.Spec{}, fmt.Errorf("repeats %d is negative", spec.Repeats)
+	}
+	if spec.Repeats == 0 {
+		spec.Repeats = 1
+	}
+	if len(spec.Tasks) == 0 {
+		return batch.Spec{}, fmt.Errorf("no tasks")
+	}
+	if len(spec.Retry) > 0 {
+		return batch.Spec{}, fmt.Errorf("retry does not belong in an eval: a cell measures one attempt, so a retried one would score the harness instead of the backend")
+	}
+	for _, t := range spec.Tasks {
+		if len(t.Retry) > 0 {
+			return batch.Spec{}, fmt.Errorf("task %s: retry does not belong in an eval", t.ID)
+		}
+	}
+	if spec.Judge != nil {
+		if err := spec.Judge.check(spec.Tasks); err != nil {
+			return batch.Spec{}, err
+		}
+		if spec.Worktrees == batch.WorktreesSlots {
+			return batch.Spec{}, fmt.Errorf("worktrees %q does not go with a judge, which reads each cell's worktree after the batch, when its slot may hold another task; leave worktrees out or use %q",
+				spec.Worktrees, batch.WorktreesFresh)
+		}
+	}
+
+	seen := map[string]bool{}
+	for i, v := range spec.Matrix {
+		name := v.name()
+		if name == "" {
+			return batch.Spec{}, fmt.Errorf("variant %d has no name and no backend", i+1)
+		}
+		if err := checkPart("variant", name); err != nil {
+			return batch.Spec{}, err
+		}
+		if seen[name] {
+			return batch.Spec{}, fmt.Errorf("duplicate variant %q: give one of them a name", name)
+		}
+		seen[name] = true
+		if v.Backend != "" {
+			if _, err := agent.Get(v.Backend); err != nil {
+				return batch.Spec{}, fmt.Errorf("variant %s: %w", name, err)
+			}
+		}
+	}
+
+	bs := spec.Spec // the batch fields carry through unchanged
+	// Shaping is the measured variant's choice, including its false value.
+	bs.ShapeTools = false
+	if bs.Worktrees == "" {
+		// Each cell keeps its own worktree until the eval is done with it.
+		bs.Worktrees = batch.WorktreesFresh
+	}
+	bs.Retry = nil
+	bs.NoSwitch = true
+	bs.Tasks = nil
+	for _, t := range spec.Tasks {
+		if t.ID == "" {
+			return batch.Spec{}, fmt.Errorf("every eval task needs an id, so its results can be compared")
+		}
+		if err := checkPart("task id", t.ID); err != nil {
+			return batch.Spec{}, err
+		}
+		for _, v := range spec.Matrix {
+			for r := 1; r <= spec.Repeats; r++ {
+				cell := t
+				cell.ShapeTools = v.ShapeTools
+				cell.ID = fmt.Sprintf("%s.%s.%s.r%d", evalID, t.ID, v.name(), r)
+				// Pin the measured backend so purpose routing cannot change a cell.
+				cell.Backend = firstOf(v.Backend, t.Backend, spec.Backend, agent.DefaultBackendNameIn(runlog.Home()))
+				if v.Lean != nil {
+					if cell.Backend != "claude" {
+						return batch.Spec{}, fmt.Errorf("variant %s: lean is only supported by the claude backend (task %s uses %s)", v.name(), t.ID, cell.Backend)
+					}
+					cell.Lean = v.Lean
+				}
+				cell.Model = firstOf(v.Model, t.Model)
+				cell.Effort = firstOf(v.Effort, t.Effort)
+				cell.Retrieval = firstOf(v.Retrieval, t.Retrieval)
+				cell.RetrievalVersion = firstOf(v.RetrievalVersion, t.RetrievalVersion)
+				cell.Retry = nil
+				bs.Tasks = append(bs.Tasks, cell)
+			}
+		}
+	}
+	return bs, nil
+}

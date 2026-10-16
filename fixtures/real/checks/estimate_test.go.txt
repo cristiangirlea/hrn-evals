@@ -1,0 +1,34 @@
+package estimate_test
+
+import (
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/estimate"
+)
+
+func TestCost(t *testing.T) {
+	priced := estimate.Variant{Name: "claude", Cost: 2.5}
+	estimated := estimate.Variant{Name: "api", Cost: 1.25, CostIsEstimate: true}
+	local := estimate.Variant{Name: "local", CostIsEstimate: true}
+	unpriced := estimate.Variant{Name: "codex"}
+	for _, tc := range []struct {
+		name string
+		v    estimate.Variant
+		n    float64
+		want string
+	}{
+		{"total of a priced variant", priced, priced.Cost, "2.5 (estimate)"},
+		{"median of a priced variant", priced, 0.125, "0.125 (estimate)"},
+		{"zero median of a priced variant", priced, 0, "0"},
+		{"estimated total", estimated, estimated.Cost, "1.25 (estimate)"},
+		{"estimated zero", local, 0, "0"},
+		{"long fraction", priced, 0.06453329999999999, "0.06453329999999999 (estimate)"},
+		{"unpriced total", unpriced, 0, "unpriced"},
+		{"unpriced median", unpriced, 0, "unpriced"},
+		{"whole dollars", priced, 3, "3 (estimate)"},
+	} {
+		if got := estimate.Cost(tc.v, tc.n); got != tc.want {
+			t.Errorf("%s: Cost = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}

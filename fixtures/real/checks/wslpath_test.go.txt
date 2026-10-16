@@ -1,0 +1,23 @@
+package wslpath_test
+
+import (
+	"testing"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/wslpath"
+)
+
+func TestInSystem32(t *testing.T) {
+	for path, want := range map[string]bool{
+		`C:\Windows\System32\bash.exe`:          true,
+		`C:\WINDOWS\system32\bash.exe`:          true,
+		`c:/windows/SYSTEM32/bash.exe`:          true,
+		`C:\Program Files\Git\usr\bin\bash.exe`: false,
+		`C:\Program Files\Git\bin\bash.exe`:     false,
+		`C:\tools\system32x\bash.exe`:           false,
+		`bash.exe`:                              false,
+	} {
+		if got := wslpath.InSystem32(path); got != want {
+			t.Errorf("InSystem32(%q) = %v, want %v", path, got, want)
+		}
+	}
+}

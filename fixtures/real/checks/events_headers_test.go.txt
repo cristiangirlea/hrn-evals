@@ -1,0 +1,93 @@
+package events_test
+
+import (
+	"context"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/cristiangirlea/hrn-evals/fixtures/real/events"
+)
+
+func TestRequestAndWatchSendTheirHeaders(t *testing.T) {
+	token := strings.Repeat("t", 64)
+	var mu sync.Mutex
+	seen := map[string]http.Header{}
+	bodies := map[string]string{}
+	var resumes []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		key := r.Method + " " + r.URL.Path
+		if _, again := seen[key]; !again {
+			seen[key] = r.Header.Clone()
+			bodies[key] = string(body)
+		}
+		if r.URL.Path == "/v1/jobs/j/events" {
+			resumes = append(resumes, r.Header.Get("Last-Event-ID"))
+		}
+		mu.Unlock()
+		switch r.URL.Path {
+		case "/v1/jobs":
+			_, _ = io.WriteString(w, `{"id":"j"}`)
+		case "/v1/missing":
+			http.Error(w, "secret "+token, http.StatusNotFound)
+		case "/v1/jobs/j/events":
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = io.WriteString(w, "id: 4\ndata: {\"n\":4}\n\nid: 5\ndata: {\"n\":5}\n\n")
+		}
+	}))
+	defer server.Close()
+	client := events.New(server.URL+"/", token)
+	ctx := context.Background()
+
+	data, err := client.Request(ctx, http.MethodPost, "/v1/jobs", map[string]string{"prompt": "x"})
+	if err != nil || string(data) != `{"id":"j"}` {
+		t.Fatalf("Request = %q, %v", data, err)
+	}
+	if _, err := client.Request(ctx, http.MethodGet, "/v1/jobs", nil); err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Request(ctx, http.MethodGet, "/v1/missing", nil)
+	var status *events.HTTPError
+	if !errors.As(err, &status) || status.Status != http.StatusNotFound || strings.Contains(err.Error(), token) {
+		t.Errorf("Request of a missing path = %v, want HTTP 404 without the body", err)
+	}
+
+	watchCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
+	defer cancel()
+	var out strings.Builder
+	if err := client.Watch(watchCtx, "/v1/jobs/j/events", 3, &out); err != nil {
+		t.Fatalf("Watch = %v", err)
+	}
+	if !strings.HasPrefix(out.String(), "{\"n\":4}\n{\"n\":5}\n") {
+		t.Errorf("Watch wrote %q", out.String())
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	post, get, watch := seen["POST /v1/jobs"], seen["GET /v1/jobs"], seen["GET /v1/jobs/j/events"]
+	for name, h := range map[string]http.Header{"POST": post, "GET": get, "watch": watch} {
+		if h.Get("Authorization") != "Bearer "+token {
+			t.Errorf("%s: Authorization = %q", name, h.Get("Authorization"))
+		}
+	}
+	if post.Get("Content-Type") != "application/json" || bodies["POST /v1/jobs"] != `{"prompt":"x"}` {
+		t.Errorf("POST: Content-Type %q, body %q", post.Get("Content-Type"), bodies["POST /v1/jobs"])
+	}
+	if get.Get("Content-Type") != "" {
+		t.Errorf("GET without a body sent Content-Type %q", get.Get("Content-Type"))
+	}
+	if watch.Get("Accept") != "text/event-stream" || watch.Get("Last-Event-ID") != "3" {
+		t.Errorf("watch: Accept %q, Last-Event-ID %q", watch.Get("Accept"), watch.Get("Last-Event-ID"))
+	}
+	// A reconnect resumes after the last event written.
+	if len(resumes) > 1 && resumes[1] != "5" {
+		t.Errorf("watch reconnected with Last-Event-ID %q, want 5", resumes[1])
+	}
+}
