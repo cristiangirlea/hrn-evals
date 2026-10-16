@@ -30,7 +30,7 @@ func do(t *testing.T, h http.Handler, method, body string) *httptest.ResponseRec
 	return rec
 }
 
-func TestEmptyListIsArray(t *testing.T) {
+func TestHiddenEmptyListIsArray(t *testing.T) {
 	rec := do(t, items.NewHandler(), http.MethodGet, "")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET status = %d, want 200", rec.Code)
@@ -43,7 +43,7 @@ func TestEmptyListIsArray(t *testing.T) {
 	}
 }
 
-func TestCreateAndList(t *testing.T) {
+func TestHiddenCreateAndList(t *testing.T) {
 	h := items.NewHandler()
 	for i, name := range []string{"first", "second"} {
 		rec := do(t, h, http.MethodPost, `{"name":"`+name+`"}`)
@@ -68,7 +68,7 @@ func TestCreateAndList(t *testing.T) {
 	}
 }
 
-func TestBadRequests(t *testing.T) {
+func TestHiddenBadRequests(t *testing.T) {
 	h := items.NewHandler()
 	for _, body := range []string{`{not json`, `{"name":""}`} {
 		if rec := do(t, h, http.MethodPost, body); rec.Code != http.StatusBadRequest {
@@ -82,7 +82,7 @@ func TestBadRequests(t *testing.T) {
 	}
 }
 
-func TestConcurrentCreates(t *testing.T) {
+func TestHiddenConcurrentCreates(t *testing.T) {
 	h := items.NewHandler()
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
