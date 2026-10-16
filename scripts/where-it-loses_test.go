@@ -147,9 +147,16 @@ func TestCellEscapes(t *testing.T) {
 		{"terminal link", "\x1b]8;;https://x\x07link\x1b]8;;\x07", "link"},
 		{"title ended by ST", "\x1b]0;title\x1b\\rest", "rest"},
 		{"bell, NUL and DEL", "a\x07b\x00c\x7fd", "abcd"},
-		{"C1 control", "a\u009bb", "ab"},
+		// U+0085 starts no sequence; U+009B (8-bit CSI) does, below.
+		{"C1 control", "a\u0085b", "ab"},
 		{"tab", "a\tb", "a b"},
 		{"text kept", "naïve ✓", "naïve ✓"},
+		{"charset reset from tput sgr0", "\x1b(Bplain", "plain"},
+		{"save and restore cursor", "\x1b7a\x1b8b", "ab"},
+		{"keypad mode", "\x1b=x", "x"},
+		{"8-bit CSI with parameters", "\u009b31mred\u009b0m", "red"},
+		{"bidi override and isolate", "a‮b⁦c⁩d‏e", "abcde"},
+		{"invalid UTF-8", "a\xffb", "a�b"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := cell(tc.input); got != tc.want {
@@ -760,7 +767,7 @@ func TestOtherProjectsLeftOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := string(b)
-	for _, want := range []string{"Evals read: 2.", "Other projects' evals left out (none of their task IDs is in a suite under suites/): 1.", "| a | 0/1 (1 failed) | ours |", "| x | 0/1 (1 failed) | mixed |"} {
+	for _, want := range []string{"Evals read: 2.", "Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval of a task since renamed is left out too): 1.", "| a | 0/1 (1 failed) | ours |", "| x | 0/1 (1 failed) | mixed |"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q in page:\n%s", want, page)
 		}
@@ -779,6 +786,11 @@ func TestShownPath(t *testing.T) {
 		`\\server\share\hrn`:        ".../hrn",
 		"results/where-it-loses.md": "results/where-it-loses.md",
 		"page.md":                   "page.md",
+		"../../Users/someone/.hrn":  ".../.hrn",
+		`..\..\Users\someone\.hrn`:  ".../.hrn",
+		"homes/../someone/.hrn":     ".../.hrn",
+		"..":                        ".../..",
+		"a..b/home":                 "a..b/home",
 		"":                          "",
 	} {
 		if got := shownPath(in); got != want {
