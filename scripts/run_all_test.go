@@ -52,9 +52,18 @@ func TestRunAll(t *testing.T) {
 		realHash = quote(p)
 	} else if p := lookup("shasum"); p != "" {
 		realHash = quote(p) + " -a 256"
-	} else {
-		t.Skip("neither sha256sum nor shasum is on PATH")
 	}
+	// Only the cases whose run reaches the fixture hashes need a real tool;
+	// the others stop before it, so they run on any host.
+	needHash := func(t *testing.T) {
+		t.Helper()
+		if realHash == "" {
+			t.Skip("neither sha256sum nor shasum is on PATH")
+		}
+	}
+	// The user's global git config (core.excludesFile above all) must not
+	// decide what counts as dirty in the sandbox.
+	env := append(os.Environ(), "BASH_ENV=", "ENV=", "GIT_CONFIG_GLOBAL=/dev/null")
 	run := func(t *testing.T, c runAllCase) (string, string, int, string) {
 		t.Helper()
 		root := t.TempDir()
@@ -84,7 +93,9 @@ exec `+quote(paths["git"])+` "$@"
 `)
 		switch c.hash {
 		case "", "sha256sum":
-			write("bin/sha256sum", shell+"exec "+realHash+" \"$@\"\n")
+			if realHash != "" {
+				write("bin/sha256sum", shell+"exec "+realHash+" \"$@\"\n")
+			}
 		case "shasum":
 			// Refuses anything but -a 256, so a passing run shows the script
 			// asked for SHA-256.
@@ -110,6 +121,7 @@ fi
 			t.Helper()
 			cmd := exec.Command("git", append([]string{"-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"}, args...)...)
 			cmd.Dir = root
+			cmd.Env = env
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("git %v: %v: %s", args, err, out)
@@ -129,7 +141,7 @@ fi
 		// Set PATH inside bash to avoid Windows PATH conversion and exclude host CLIs.
 		cmd := exec.Command(bash, "--noprofile", "--norc", "-c", "PATH=\"$PWD/bin\"; export PATH; exec "+quote(paths["bash"])+" scripts/run-all.sh")
 		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "BASH_ENV=", "ENV=")
+		cmd.Env = env
 		out, err := cmd.CombinedOutput()
 		code := 0
 		if err != nil {
@@ -147,6 +159,7 @@ fi
 	}
 	fixtureHash := fmt.Sprintf("%x  fixtures/sample.txt\n", sha256.Sum256([]byte("fixture\n")))
 	t.Run("pins before evals", func(t *testing.T) {
+		needHash(t)
 		out, calls, code, head := run(t, runAllCase{})
 		if code != 0 {
 			t.Fatalf("exit %d:\n%s", code, out)
@@ -164,6 +177,7 @@ fi
 		}
 	})
 	t.Run("codex absent", func(t *testing.T) {
+		needHash(t)
 		out, calls, code, _ := run(t, runAllCase{noCodex: true})
 		if code != 0 || !strings.Contains(out, "codex: (not installed)\n") || !strings.HasSuffix(calls, "eval list -n 2\n") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
@@ -184,6 +198,7 @@ fi
 		})
 	}
 	t.Run("shasum fallback", func(t *testing.T) {
+		needHash(t)
 		out, calls, code, _ := run(t, runAllCase{hash: "shasum"})
 		if code != 0 || !strings.Contains(out, fixtureHash) || !strings.HasSuffix(calls, "eval list -n 2\n") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
@@ -210,6 +225,7 @@ fi
 		}
 	})
 	t.Run("a failing eval", func(t *testing.T) {
+		needHash(t)
 		// The other suites still run, and the list comes last, so the failed
 		// run's id is there to read; the script exits 1.
 		out, calls, code, _ := run(t, runAllCase{failSuite: "suites/golden/a.json"})
