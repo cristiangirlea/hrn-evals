@@ -6,7 +6,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/suitekey"
 )
 
-func TestKeys(t *testing.T) {
+func TestHiddenKeys(t *testing.T) {
 	for _, tc := range []struct {
 		spec            suitekey.Spec
 		tasks, variants string

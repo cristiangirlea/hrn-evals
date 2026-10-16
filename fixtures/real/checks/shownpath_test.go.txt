@@ -6,7 +6,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/shownpath"
 )
 
-func TestShown(t *testing.T) {
+func TestHiddenShown(t *testing.T) {
 	for in, want := range map[string]string{
 		`C:\Users\someone\.hrn`:     ".../.hrn",
 		`c:/Users/someone/.hrn/`:    ".../.hrn",

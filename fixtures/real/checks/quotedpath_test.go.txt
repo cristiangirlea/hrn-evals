@@ -22,7 +22,7 @@ func shorten(t *testing.T, s, root string, windows bool) string {
 	return s[:i] + name + s[end:]
 }
 
-func TestWindowsPaths(t *testing.T) {
+func TestHiddenWindowsPaths(t *testing.T) {
 	for _, tc := range []struct{ s, root, want string }{
 		{`"C:\Program Files\Git (Preview)\bin\bash.exe" -lc ls`, `C:\Program Files\`, `"bash.exe" -lc ls`},
 		{`'C:\Program Files\Tools [x64]\rg.exe' -n x`, `C:\Program Files\`, `'rg.exe' -n x`},
@@ -47,7 +47,7 @@ func TestWindowsPaths(t *testing.T) {
 	}
 }
 
-func TestUnixPaths(t *testing.T) {
+func TestHiddenUnixPaths(t *testing.T) {
 	for _, tc := range []struct{ s, root, want string }{
 		{"/usr/local/bin/node script.js", "/usr/local/bin/", "node script.js"},
 		{`exec "/bin/sh" -c true`, "/bin/", `exec "sh" -c true`},

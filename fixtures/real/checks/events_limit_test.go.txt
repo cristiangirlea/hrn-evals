@@ -15,7 +15,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/events"
 )
 
-func TestReadEventsNamesTheLimit(t *testing.T) {
+func TestHiddenReadEventsNamesTheLimit(t *testing.T) {
 	input := "id: 1\ndata: " + strings.Repeat("x", 1<<20) + "\n\n"
 	_, err := events.ReadEvents(strings.NewReader(input), 0, io.Discard)
 	if !errors.Is(err, bufio.ErrTooLong) || !strings.Contains(err.Error(), "event line exceeds 1 MiB limit") {
@@ -28,7 +28,7 @@ func TestReadEventsNamesTheLimit(t *testing.T) {
 	}
 }
 
-func TestWatchStopsOnOversizedEventLine(t *testing.T) {
+func TestHiddenWatchStopsOnOversizedEventLine(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
@@ -47,5 +47,37 @@ func TestWatchStopsOnOversizedEventLine(t *testing.T) {
 	}
 	if got := requests.Load(); got != 1 {
 		t.Errorf("requests = %d, want 1", got)
+	}
+}
+
+// A connection dropped in the middle of a stream is no reason to stop: Watch
+// reconnects and resumes after the last event it wrote.
+func TestHiddenWatchResumesAfterADroppedConnection(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := requests.Add(1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		if n == 1 {
+			_, _ = io.WriteString(w, "id: 1\ndata: {\"n\":1}\n\n")
+			w.(http.Flusher).Flush()
+			if conn, _, err := w.(http.Hijacker).Hijack(); err == nil {
+				conn.Close()
+			}
+			return
+		}
+		if got := r.Header.Get("Last-Event-ID"); n == 2 && got != "1" {
+			t.Errorf("reconnected with Last-Event-ID %q, want 1", got)
+		}
+		_, _ = io.WriteString(w, "id: 2\ndata: {\"n\":2}\n\n")
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 2500*time.Millisecond)
+	defer cancel()
+	var out strings.Builder
+	if err := events.New(server.URL, strings.Repeat("t", 64)).Watch(ctx, "/v1/jobs/j/events", 0, &out); err != nil {
+		t.Fatalf("Watch = %v after a dropped connection, want it to reconnect", err)
+	}
+	if !strings.HasPrefix(out.String(), "{\"n\":1}\n{\"n\":2}\n") {
+		t.Errorf("Watch wrote %q, want both events", out.String())
 	}
 }

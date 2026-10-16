@@ -14,7 +14,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/events"
 )
 
-func TestRequestAndWatchSendTheirHeaders(t *testing.T) {
+func TestHiddenRequestAndWatchSendTheirHeaders(t *testing.T) {
 	token := strings.Repeat("t", 64)
 	var mu sync.Mutex
 	seen := map[string]http.Header{}
