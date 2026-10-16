@@ -12,7 +12,7 @@ import (
 // negative matches a negative duration in a reason, such as "idle -5ms".
 var negative = regexp.MustCompile(`-[0-9]`)
 
-func TestDecide(t *testing.T) {
+func TestHiddenDecide(t *testing.T) {
 	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
 		name    string
@@ -23,7 +23,6 @@ func TestDecide(t *testing.T) {
 		{"an hour idle, limit 30m", now.Add(-time.Hour), 30 * time.Minute, true},
 		{"a minute idle, limit 30m", now.Add(-time.Minute), 30 * time.Minute, false},
 		{"written now, --idle 0", now, 0, true},
-		// File times and the clock differ by their resolution.
 		{"written a hair after now, --idle 0", now.Add(5 * time.Millisecond), 0, true},
 		{"written after now, limit 1ns", now.Add(time.Second), time.Nanosecond, false},
 	} {
@@ -37,7 +36,7 @@ func TestDecide(t *testing.T) {
 	}
 }
 
-func TestCandidates(t *testing.T) {
+func TestHiddenCandidates(t *testing.T) {
 	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
 	caches := []cacheage.Cache{
 		{Path: "fresh", LastBuild: now.Add(3 * time.Millisecond)},

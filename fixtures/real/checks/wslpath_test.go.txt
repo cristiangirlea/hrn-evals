@@ -6,7 +6,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/wslpath"
 )
 
-func TestInSystem32(t *testing.T) {
+func TestHiddenInSystem32(t *testing.T) {
 	for path, want := range map[string]bool{
 		`C:\Windows\System32\bash.exe`:          true,
 		`C:\WINDOWS\system32\bash.exe`:          true,

@@ -6,7 +6,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/variantname"
 )
 
-func TestDisplayName(t *testing.T) {
+func TestHiddenDisplayName(t *testing.T) {
 	for _, tc := range []struct {
 		v    variantname.Variant
 		want string
@@ -26,7 +26,7 @@ func TestDisplayName(t *testing.T) {
 	}
 }
 
-func TestValidate(t *testing.T) {
+func TestHiddenValidate(t *testing.T) {
 	ok := []variantname.Variant{{Name: "a"}, {Backend: "codex"}, {Backend: "codex", Model: "m1"}}
 	if err := variantname.Validate(ok); err != nil {
 		t.Errorf("Validate(valid) = %v", err)

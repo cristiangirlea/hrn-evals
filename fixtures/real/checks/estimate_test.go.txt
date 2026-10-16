@@ -6,7 +6,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/real/estimate"
 )
 
-func TestCost(t *testing.T) {
+func TestHiddenCost(t *testing.T) {
 	priced := estimate.Variant{Name: "claude", Cost: 2.5}
 	estimated := estimate.Variant{Name: "api", Cost: 1.25, CostIsEstimate: true}
 	local := estimate.Variant{Name: "local", CostIsEstimate: true}
