@@ -61,13 +61,23 @@ func TestRunAll(t *testing.T) {
 			t.Skip("neither sha256sum nor shasum is on PATH")
 		}
 	}
-	// The user's global git config and global ignore file must not decide
-	// what counts as dirty in the sandbox: GIT_CONFIG_GLOBAL stops
-	// ~/.gitconfig (and its core.excludesFile), and an empty XDG_CONFIG_HOME
-	// stops the default ignore file, ~/.config/git/ignore. Read at each run,
-	// so a test can set the user's side first.
+	// Nothing of the user's git setup may decide what counts as dirty in the
+	// sandbox. Every inherited GIT_ variable goes (GIT_DIR and GIT_WORK_TREE
+	// from a hook would point git at another repository; GIT_CONFIG_COUNT,
+	// GIT_CONFIG_PARAMETERS and the like would add settings). GIT_CONFIG_GLOBAL
+	// stops ~/.gitconfig and $XDG_CONFIG_HOME/git/config, GIT_CONFIG_NOSYSTEM
+	// the system config, and XDG_CONFIG_HOME pointing at an empty directory
+	// the default ignore file (an empty value would fall back to
+	// ~/.config/git/ignore). Read at each run, so a test can set the user's
+	// side first.
 	sandboxEnv := func(t *testing.T) []string {
-		return append(os.Environ(), "BASH_ENV=", "ENV=", "GIT_CONFIG_GLOBAL=/dev/null", "XDG_CONFIG_HOME="+t.TempDir())
+		var env []string
+		for _, kv := range os.Environ() {
+			if !strings.HasPrefix(strings.ToUpper(kv), "GIT_") {
+				env = append(env, kv)
+			}
+		}
+		return append(env, "BASH_ENV=", "ENV=", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1", "XDG_CONFIG_HOME="+t.TempDir())
 	}
 	run := func(t *testing.T, c runAllCase) (string, string, int, string) {
 		t.Helper()
@@ -219,6 +229,23 @@ fi
 		}
 		t.Setenv("XDG_CONFIG_HOME", xdg)
 		t.Setenv("HOME", home)
+		out, calls, code, _ := run(t, runAllCase{untracked: true})
+		if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("untracked file under git variables from a hook", func(t *testing.T) {
+		// A git hook running go test would hand over GIT_DIR and friends;
+		// GIT_CONFIG_COUNT can add a core.excludesFile that hides the file.
+		outer, ignore := t.TempDir(), filepath.Join(t.TempDir(), "ignore")
+		if err := os.WriteFile(ignore, []byte("new.txt\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("GIT_DIR", filepath.Join(outer, ".git"))
+		t.Setenv("GIT_WORK_TREE", outer)
+		t.Setenv("GIT_CONFIG_COUNT", "1")
+		t.Setenv("GIT_CONFIG_KEY_0", "core.excludesFile")
+		t.Setenv("GIT_CONFIG_VALUE_0", filepath.ToSlash(ignore))
 		out, calls, code, _ := run(t, runAllCase{untracked: true})
 		if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
