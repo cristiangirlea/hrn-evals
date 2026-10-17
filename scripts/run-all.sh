@@ -7,7 +7,13 @@ cd "$(dirname "$0")/.."
 
 # Plain assignments, so that set -e stops the script when git fails: inside the
 # if a failure would read as a clean tree, inside echo as an empty commit.
-status=$(git status --porcelain)
+# Nothing in the user's git setup may hide a file from this check, since a
+# file left out of HEAD is left out of what the agents branch from: an empty
+# core.excludesFile turns off their global ignore files (their
+# core.excludesFile and the default ~/.config/git/ignore), and
+# --untracked-files=normal overrides a status.showUntrackedFiles=no. The
+# repository's own .gitignore still applies.
+status=$(git -c core.excludesFile= status --porcelain --untracked-files=normal)
 if [ -n "$status" ]; then
 	echo "run-all: commit or stash local changes first; the agents branch from HEAD" >&2
 	exit 1
