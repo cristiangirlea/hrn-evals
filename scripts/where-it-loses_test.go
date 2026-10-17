@@ -157,6 +157,11 @@ func TestCellEscapes(t *testing.T) {
 		{"8-bit CSI with parameters", "\u009b31mred\u009b0m", "red"},
 		{"bidi override and isolate", "a\u202eb\u2066c\u2069d\u200fe", "abcde"},
 		{"Arabic letter mark", "a\u061cb", "ab"},
+		{"sixel image (DCS)", "a\x1bPq#0;1;2\x1b\\b", "ab"},
+		{"APC string", "a\x1b_data\x1b\\b", "ab"},
+		{"8-bit OSC ended by BEL", "a\xc2\x9d0;title\x07b", "ab"},
+		{"8-bit DCS ended by 8-bit ST", "a\xc2\x90q#0\xc2\x9cb", "ab"},
+		{"unended DCS loses its opening", "a\x1bPqtext", "aqtext"},
 		{"invalid UTF-8", "a\xffb", "a\ufffdb"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -238,19 +243,20 @@ func TestUnnamedSuiteFix(t *testing.T) {
 		}
 		return e
 	}
-	// Records as hrn writes them: a table row for every task and variant.
+	// Records as hrn writes them: a table row for every task and variant, in
+	// the spec's task order, with passed written even when it is 0.
 	const matrix = `"matrix":[{"name":"small"},{"name":"large"}]`
 	const variants = `"variants":[{"name":"small"},{"name":"large"}]`
 	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"tasks":[{"id":"b"},{"id":"a"}],` + matrix + `},"table":{` + variants + `,"tasks":[` +
-		`{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1},` +
-		`{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}]}}`)
+		`{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1},` +
+		`{"task":"a","variant":"small","passed":0,"total":1},{"task":"a","variant":"large","passed":1,"total":1}]}}`)
 	task := taskResult{Task: "a", Variant: "small", Total: 1}
 	for _, tc := range []struct{ name, spec, rows, want string }{
-		{"same set reordered", `[{"id":"a"},{"id":"b"}]`, `{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","total":1},{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}`, "fixed in eval later"},
+		{"same set reordered", `[{"id":"a"},{"id":"b"}]`, `{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","passed":0,"total":1},{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}`, "fixed in eval later"},
 		// A one-task run with task a defined as before would be a re-run of
 		// the cell; this one changes it.
-		{"different set", `[{"id":"a","prompt":"changed"}]`, `{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","total":1}`, ""},
-		{"other variant", `[{"id":"a"},{"id":"b"}]`, `{"task":"a","variant":"small","total":1},{"task":"a","variant":"large","passed":1,"total":1},{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}`, ""},
+		{"different set", `[{"id":"a","prompt":"changed"}]`, `{"task":"a","variant":"small","passed":1,"total":1},{"task":"a","variant":"large","passed":0,"total":1}`, ""},
+		{"other variant", `[{"id":"a"},{"id":"b"}]`, `{"task":"a","variant":"small","passed":0,"total":1},{"task":"a","variant":"large","passed":1,"total":1},{"task":"b","variant":"small","passed":1,"total":1},{"task":"b","variant":"large","passed":1,"total":1}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":{"tasks":` + tc.spec + `,` + matrix + `},"table":{` + variants + `,"tasks":[` + tc.rows + `]}}`)
@@ -768,7 +774,7 @@ func TestOtherProjectsLeftOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	page := string(b)
-	for _, want := range []string{"Evals read: 2.", "Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval of a task since renamed is left out too): 1.", "| a | 0/1 (1 failed) | ours |", "| x | 0/1 (1 failed) | mixed |"} {
+	for _, want := range []string{"Evals read: 2.", "Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval whose task IDs have all been renamed since is left out too): 1.", "| a | 0/1 (1 failed) | ours |", "| x | 0/1 (1 failed) | mixed |"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q in page:\n%s", want, page)
 		}
@@ -784,7 +790,15 @@ func TestShownPath(t *testing.T) {
 		`c:/Users/someone/.hrn/`:    ".../.hrn",
 		"/home/someone/.hrn":        ".../.hrn",
 		"~/.hrn":                    ".../.hrn",
-		`\\server\share\hrn`:        ".../hrn",
+		`\\server\share\hrn`:        ".../",
+		"/home/someone":             ".../",
+		"~user":                     ".../",
+		"~user/":                    ".../",
+		`C:\Users\john.doe`:         ".../",
+		`C:Users\someone\.hrn`:      ".../.hrn",
+		"C:someone":                 ".../",
+		"/tmp/page.md":              ".../page.md",
+		"../../Users/someone":       ".../",
 		"results/where-it-loses.md": "results/where-it-loses.md",
 		"page.md":                   "page.md",
 		"../../Users/someone/.hrn":  ".../.hrn",
