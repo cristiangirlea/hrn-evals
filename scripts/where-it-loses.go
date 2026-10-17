@@ -221,28 +221,44 @@ func main() {
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'" }
 
 // shownPath keeps a local path off the page: an absolute or home-relative
-// path (Unix or Windows, whatever the OS the page is made on) is shown as
-// .../ and its last element. A relative path says nothing about the machine,
-// unless it climbs out of the repository with a .. element
-// (../../Users/someone/.hrn names a user): that one is shown the same way.
+// path (Unix or Windows, drive-relative too, whatever the OS the page is made
+// on) is shown as .../ and, when it is a dot directory or a page, its last
+// element. A relative path says nothing about the machine, unless it climbs
+// out of the repository with a .. element (../../Users/someone/.hrn names a
+// user): that one is shown the same way.
 func shownPath(p string) string {
 	local := strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) || strings.HasPrefix(p, "~") ||
 		len(p) >= 3 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')
+	// A drive-relative Windows path (C:Users\someone) is on the machine too.
+	local = local || len(p) >= 2 && p[1] == ':' && ('a' <= p[0]|0x20 && p[0]|0x20 <= 'z')
 	for _, element := range strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == '\\' }) {
 		local = local || element == ".."
 	}
 	if !local {
 		return p
 	}
+	// The last element is shown only when it is a dot directory or a page
+	// (.hrn, page.md): any other (/home/someone, ~user, C:\Users\john.doe)
+	// may be a user name.
 	trimmed := strings.TrimRight(p, `/\`)
-	return ".../" + trimmed[strings.LastIndexAny(trimmed, `/\`)+1:]
+	last := trimmed[strings.LastIndexAny(trimmed, `/\`)+1:]
+	if len(p) >= 2 && p[1] == ':' && strings.LastIndexAny(trimmed, `/\`) < 0 {
+		last = last[2:]
+	}
+	if !strings.HasPrefix(last, ".") && !strings.HasSuffix(last, ".md") {
+		last = ""
+	}
+	return ".../" + last
 }
 
 // controls matches terminal escape sequences a test runner may print: CSI
 // (colours, cursor moves), OSC (titles, links), the other ESC sequences
 // (intermediate bytes, then a final byte: ESC ( B from tput sgr0, ESC 7 and
-// ESC 8, ESC =), and the 8-bit CSI with its parameters.
-var controls = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(\x07|\x1b\\)|[ -/]*[0-~])|\x{9b}[0-?]*[ -/]*[@-~]`)
+// ESC 8, ESC =), the 8-bit CSI with its parameters, and the control strings
+// with their text (DCS, SOS, PM and APC after ESC P, X, ^ or _, and the 8-bit
+// DCS, SOS, OSC, PM and APC), ended by BEL, ESC \ or the 8-bit ST. A string
+// that is never ended loses only its opening sequence.
+var controls = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|[\]PX^_][^\x07\x1b\x{9c}]*(\x07|\x1b\\|\x{9c})|[ -/]*[0-~])|\x{9b}[0-?]*[ -/]*[@-~]|[\x{90}\x{98}\x{9d}-\x{9f}][^\x07\x1b\x{9c}]*(\x07|\x1b\\|\x{9c})`)
 
 // bidi holds the Unicode Bidi_Control characters, which reorder how the text
 // around them is displayed (marks, embeddings, overrides, isolates); gate
@@ -320,7 +336,8 @@ type suiteIndex struct {
 // ours reports whether an eval ran this repository's work: whether any of its
 // task IDs is defined by a suite here. The hrn home is shared, so other
 // projects' evals are in it too; with no suites to tell by, every eval is ours.
-// A suite that renames a task ID moves its own older evals of that task out.
+// An older eval of this repository whose task IDs have all been renamed since
+// counts as another project's; one that still has a task ID in a suite stays.
 func (s suiteIndex) ours(e evalRecord) bool {
 	if len(s.tasks) == 0 {
 		return true
@@ -333,9 +350,12 @@ func (s suiteIndex) ours(e evalRecord) bool {
 	return false
 }
 
-// suiteLabels reads the files under suites/. The page labels a suite by the
-// file under suites/ matching their task ID set and matrix variant names,
-// falling back to the task ID set alone, then joined task IDs.
+// suiteLabels reads the files under suites/ and indexes them by task ID set
+// and matrix variant names, and by task ID set alone (the first file keeps
+// that one), refusing two files with the same task ID set and matrix variant
+// names. With it, generate and suiteLabel label evals by the file under
+// suites/ matching their task ID set and matrix variant names, falling back to
+// the task ID set alone, then joined task IDs.
 func suiteLabels() (suiteIndex, error) {
 	labels := make(map[suiteKey]string)
 	tasks := make(map[string]bool)
@@ -520,7 +540,7 @@ func generate(home, out, command string) error {
 	if !latest.IsZero() {
 		date = latest.UTC().Format("2006-01-02")
 	}
-	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d. Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval of a task since renamed is left out too): %d.\n\n", date, cell(command), len(evals), skipped, others)
+	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d. Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval whose task IDs have all been renamed since is left out too): %d.\n\n", date, cell(command), len(evals), skipped, others)
 	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here, without terminal escape sequences, control characters or bidirectional controls; bytes that are not valid UTF-8 show as U+FFFD.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
