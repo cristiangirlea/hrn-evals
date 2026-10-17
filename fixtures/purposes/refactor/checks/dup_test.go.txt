@@ -7,7 +7,7 @@ import (
 	"github.com/cristiangirlea/hrn-evals/fixtures/purposes/refactor"
 )
 
-func TestBehaviour(t *testing.T) {
+func TestHiddenBehaviour(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		values    []int
