@@ -258,7 +258,7 @@ func shownPath(p string) string {
 // with their text (DCS, SOS, PM and APC after ESC P, X, ^ or _, and the 8-bit
 // DCS, SOS, OSC, PM and APC), ended by BEL, ESC \ or the 8-bit ST. A string
 // that is never ended loses only its opening sequence.
-var controls = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|[\]PX^_][^\x07\x1b]*(\x07|\x1b\\)|[ -/]*[0-~])|\x{9b}[0-?]*[ -/]*[@-~]|[\x{90}\x{98}\x{9d}-\x{9f}][^\x07\x1b\x{9c}]*(\x07|\x1b\\|\x{9c})`)
+var controls = regexp.MustCompile(`\x1b(\[[0-?]*[ -/]*[@-~]|[\]PX^_][^\x07\x1b\x{9c}]*(\x07|\x1b\\|\x{9c})|[ -/]*[0-~])|\x{9b}[0-?]*[ -/]*[@-~]|[\x{90}\x{98}\x{9d}-\x{9f}][^\x07\x1b\x{9c}]*(\x07|\x1b\\|\x{9c})`)
 
 // bidi holds the Unicode Bidi_Control characters, which reorder how the text
 // around them is displayed (marks, embeddings, overrides, isolates); gate

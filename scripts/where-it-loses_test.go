@@ -161,6 +161,7 @@ func TestCellEscapes(t *testing.T) {
 		{"APC string", "a\x1b_data\x1b\\b", "ab"},
 		{"8-bit OSC ended by BEL", "a\xc2\x9d0;title\x07b", "ab"},
 		{"8-bit DCS ended by 8-bit ST", "a\xc2\x90q#0\xc2\x9cb", "ab"},
+		{"DCS ended by 8-bit ST", "a\x1bPdata\xc2\x9cb", "ab"},
 		{"unended DCS loses its opening", "a\x1bPqtext", "aqtext"},
 		{"invalid UTF-8", "a\xffb", "a\ufffdb"},
 	} {
