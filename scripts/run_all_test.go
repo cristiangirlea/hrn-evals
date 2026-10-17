@@ -19,6 +19,14 @@ type runAllCase struct {
 	hash      string // the hash tool on PATH: "sha256sum" (default), "shasum" or "none"
 	failSuite string // the suite whose hrn eval exits 1
 	failGit   string // the git subcommand that exits 128, as outside a repository
+	// globalIgnore gives the run a user-level git setup that ignores the
+	// untracked file both ways (core.excludesFile in ~/.gitconfig and
+	// $XDG_CONFIG_HOME/git/ignore) instead of the sandbox's isolation, to show
+	// that run-all itself does not honour it.
+	globalIgnore bool
+	// ignoredByRepo commits a .gitignore holding .hrn/ and leaves a file
+	// under .hrn/, as an eval does.
+	ignoredByRepo bool
 }
 
 func TestRunAll(t *testing.T) {
@@ -83,6 +91,27 @@ func TestRunAll(t *testing.T) {
 		t.Helper()
 		root := t.TempDir()
 		env := sandboxEnv(t)
+		if c.globalIgnore {
+			xdg, home := t.TempDir(), t.TempDir()
+			ignore := filepath.Join(xdg, "git", "ignore")
+			if err := os.MkdirAll(filepath.Dir(ignore), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(ignore, []byte("new.txt\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			gitconfig := filepath.Join(home, ".gitconfig")
+			if err := os.WriteFile(gitconfig, []byte("[core]\n\texcludesFile = "+filepath.ToSlash(ignore)+"\n"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			var kept []string
+			for _, kv := range env {
+				if !strings.HasPrefix(kv, "GIT_CONFIG_GLOBAL=") && !strings.HasPrefix(kv, "XDG_CONFIG_HOME=") {
+					kept = append(kept, kv)
+				}
+			}
+			env = append(kept, "GIT_CONFIG_GLOBAL="+filepath.ToSlash(gitconfig), "XDG_CONFIG_HOME="+xdg)
+		}
 		write := func(name, content string) {
 			t.Helper()
 			path := filepath.Join(root, name)
@@ -97,11 +126,17 @@ func TestRunAll(t *testing.T) {
 		write("fixtures/sample.txt", "fixture\n")
 		write("suites/golden/a.json", "{}\n")
 		write("suites/golden/b.json", "{}\n")
+		if c.ignoredByRepo {
+			write(".gitignore", ".hrn/\n")
+		}
 		shell := "#!" + paths["bash"] + "\n"
 		for _, tool := range []string{"dirname", "find", "sort"} {
 			write("bin/"+tool, shell+"exec "+quote(paths[tool])+" \"$@\"\n")
 		}
-		write("bin/git", shell+`if [ "$1" = `+quote(c.failGit)+` ]; then
+		// The subcommand is the first argument after any -c options.
+		write("bin/git", shell+`sub=$1
+if [ "$sub" = -c ]; then sub=$3; fi
+if [ "$sub" = `+quote(c.failGit)+` ]; then
  echo "fatal: not a git repository" >&2
  exit 128
 fi
@@ -150,6 +185,9 @@ fi
 		head := git("rev-parse", "HEAD")
 		if c.dirty {
 			write("fixtures/sample.txt", "dirty\n")
+		}
+		if c.ignoredByRepo {
+			write(".hrn/worktrees/x/file.txt", "eval leftover\n")
 		}
 		if c.untracked {
 			write("fixtures/new.txt", "new\n")
@@ -232,6 +270,22 @@ fi
 		out, calls, code, _ := run(t, runAllCase{untracked: true})
 		if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("untracked file the user's global ignore matches", func(t *testing.T) {
+		// Real use: the user's global excludes do not hide a file from the
+		// dirty check, since the agents, branching from HEAD, would not see it.
+		out, calls, code, _ := run(t, runAllCase{untracked: true, globalIgnore: true})
+		if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("a global ignore does not hide the repository's own ignores", func(t *testing.T) {
+		// .hrn/ and the other entries of the repository's .gitignore still
+		// keep a clean tree clean.
+		out, _, code, _ := run(t, runAllCase{globalIgnore: true, ignoredByRepo: true})
+		if strings.Contains(out, "commit or stash local changes first") {
+			t.Fatalf("exit %d: an ignored file counted as dirty:\n%s", code, out)
 		}
 	})
 	t.Run("untracked file under git variables from a hook", func(t *testing.T) {
