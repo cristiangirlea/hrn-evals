@@ -15,7 +15,7 @@
       "prompt": "Create fixtures/gobench/fib/fib.go in package fib with an exported function `func Fib(n int) int` that returns the n-th Fibonacci number (Fib(0) = 0, Fib(1) = 1) using memoization, so that Fib(90) returns immediately. Only the standard library. Make sure `go build ./fixtures/gobench/fib/` succeeds. Do not run git.",
       "gate": [
         "git diff --quiet HEAD -- fixtures/gobench/checks || { echo 'the checks were changed'; exit 1; }",
-        "cp fixtures/gobench/checks/fib_test.go.txt fixtures/gobench/fib/fib_test.go",
+        "cp fixtures/gobench/checks/fib_test.go.txt fixtures/gobench/fib/fib_hidden_test.go",
         "go test -count=1 -timeout 30s ./fixtures/gobench/fib/ || { echo 'Fib is wrong, or too slow to be memoized (30s timeout)'; exit 1; }"
       ]
     },
@@ -24,7 +24,7 @@
       "prompt": "Create fixtures/gobench/items/items.go in package items, using only net/http and encoding/json from the standard library, with `func NewHandler() http.Handler` serving an in-memory list of items at the path /items. An item is the JSON object {\"id\": <int>, \"name\": <string>}. GET /items returns 200 and a JSON array of all items in creation order (an empty array, not null, when there are none). POST /items with a body {\"name\": \"...\"} creates an item with the next id, starting at 1, and returns 201 with the created item as JSON; a body that is not valid JSON or has an empty name returns 400. Any other method on /items returns 405. Responses with a body set Content-Type: application/json. It must be safe for concurrent requests. Make sure `go build ./fixtures/gobench/items/` succeeds. Do not run git.",
       "gate": [
         "git diff --quiet HEAD -- fixtures/gobench/checks || { echo 'the checks were changed'; exit 1; }",
-        "cp fixtures/gobench/checks/items_test.go.txt fixtures/gobench/items/items_test.go",
+        "cp fixtures/gobench/checks/items_test.go.txt fixtures/gobench/items/items_hidden_test.go",
         "go test -count=1 -timeout 60s ./fixtures/gobench/items/ || { echo 'the handler does not meet the contract'; exit 1; }"
       ]
     },
