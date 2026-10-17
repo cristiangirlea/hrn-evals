@@ -19,11 +19,13 @@ type runAllCase struct {
 	hash      string // the hash tool on PATH: "sha256sum" (default), "shasum" or "none"
 	failSuite string // the suite whose hrn eval exits 1
 	failGit   string // the git subcommand that exits 128, as outside a repository
-	// globalIgnore gives the run a user-level git setup that ignores the
-	// untracked file both ways (core.excludesFile in ~/.gitconfig and
-	// $XDG_CONFIG_HOME/git/ignore) instead of the sandbox's isolation, to show
-	// that run-all itself does not honour it.
-	globalIgnore bool
+	// userGit gives the run a user-level git setup in place of the sandbox's
+	// isolation, to show that run-all itself does not honour it:
+	// "xdg-ignore" lists the untracked file in $XDG_CONFIG_HOME/git/ignore,
+	// git's default global ignore; "excludes-file" lists it in a file that
+	// ~/.gitconfig names as core.excludesFile; "hide-untracked" sets
+	// status.showUntrackedFiles=no in ~/.gitconfig.
+	userGit string
 	// ignoredByRepo commits a .gitignore holding .hrn/ and leaves a file
 	// under .hrn/, as an eval does.
 	ignoredByRepo bool
@@ -91,17 +93,30 @@ func TestRunAll(t *testing.T) {
 		t.Helper()
 		root := t.TempDir()
 		env := sandboxEnv(t)
-		if c.globalIgnore {
+		if c.userGit != "" {
 			xdg, home := t.TempDir(), t.TempDir()
-			ignore := filepath.Join(xdg, "git", "ignore")
-			if err := os.MkdirAll(filepath.Dir(ignore), 0755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(ignore, []byte("new.txt\n"), 0644); err != nil {
-				t.Fatal(err)
-			}
 			gitconfig := filepath.Join(home, ".gitconfig")
-			if err := os.WriteFile(gitconfig, []byte("[core]\n\texcludesFile = "+filepath.ToSlash(ignore)+"\n"), 0644); err != nil {
+			var ignore, config string
+			switch c.userGit {
+			case "xdg-ignore":
+				ignore = filepath.Join(xdg, "git", "ignore")
+			case "excludes-file":
+				ignore = filepath.Join(home, "global-ignore")
+				config = "[core]\n\texcludesFile = " + filepath.ToSlash(ignore) + "\n"
+			case "hide-untracked":
+				config = "[status]\n\tshowUntrackedFiles = no\n"
+			default:
+				t.Fatalf("unknown userGit %q", c.userGit)
+			}
+			if ignore != "" {
+				if err := os.MkdirAll(filepath.Dir(ignore), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(ignore, []byte("new.txt\n"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(gitconfig, []byte(config), 0644); err != nil {
 				t.Fatal(err)
 			}
 			var kept []string
@@ -272,20 +287,24 @@ fi
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
 	})
-	t.Run("untracked file the user's global ignore matches", func(t *testing.T) {
-		// Real use: the user's global excludes do not hide a file from the
-		// dirty check, since the agents, branching from HEAD, would not see it.
-		out, calls, code, _ := run(t, runAllCase{untracked: true, globalIgnore: true})
-		if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
-			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
-		}
-	})
-	t.Run("a global ignore does not hide the repository's own ignores", func(t *testing.T) {
+	// Real use: nothing in the user's own git setup hides an untracked file
+	// from the dirty check, since the agents, branching from HEAD, would not
+	// see it. One case per way a user's setup can hide it.
+	for _, userGit := range []string{"xdg-ignore", "excludes-file", "hide-untracked"} {
+		t.Run("untracked file under the user's "+userGit, func(t *testing.T) {
+			out, calls, code, _ := run(t, runAllCase{untracked: true, userGit: userGit})
+			if code != 1 || calls != "" || !strings.Contains(out, "run-all: commit or stash local changes first; the agents branch from HEAD") {
+				t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+			}
+		})
+	}
+	t.Run("a user's git setup does not hide the repository's own ignores", func(t *testing.T) {
 		// .hrn/ and the other entries of the repository's .gitignore still
-		// keep a clean tree clean.
-		out, _, code, _ := run(t, runAllCase{globalIgnore: true, ignoredByRepo: true})
-		if strings.Contains(out, "commit or stash local changes first") {
-			t.Fatalf("exit %d: an ignored file counted as dirty:\n%s", code, out)
+		// keep a clean tree clean: the run goes on to the pins and the evals.
+		needHash(t)
+		out, calls, code, _ := run(t, runAllCase{userGit: "excludes-file", ignoredByRepo: true})
+		if code != 0 || !strings.Contains(out, "pins:") || !strings.HasSuffix(calls, "eval list -n 2\n") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
 	})
 	t.Run("untracked file under git variables from a hook", func(t *testing.T) {
