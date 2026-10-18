@@ -26,9 +26,23 @@ type runAllCase struct {
 	// ~/.gitconfig names as core.excludesFile; "hide-untracked" sets
 	// status.showUntrackedFiles=no in ~/.gitconfig.
 	userGit string
+	// mark sets "assume-unchanged", "skip-worktree" or both (space-separated)
+	// on fixtures/sample.txt (or markFile) after the commit, so that git
+	// status no longer reports a change to it.
+	mark     string
+	markFile string // a committed file to mark instead of fixtures/sample.txt
+	// cleared then clears the marks with the commands the refusal names.
+	cleared bool
 	// ignoredByRepo commits a .gitignore holding .hrn/ and leaves a file
 	// under .hrn/, as an eval does.
 	ignoredByRepo bool
+}
+
+func (c runAllCase) markedFile() string {
+	if c.markFile != "" {
+		return c.markFile
+	}
+	return "fixtures/sample.txt"
 }
 
 func TestRunAll(t *testing.T) {
@@ -139,6 +153,9 @@ func TestRunAll(t *testing.T) {
 		}
 		write("scripts/run-all.sh", string(script))
 		write("fixtures/sample.txt", "fixture\n")
+		if c.markFile != "" {
+			write(c.markFile, "marked\n")
+		}
 		write("suites/golden/a.json", "{}\n")
 		write("suites/golden/b.json", "{}\n")
 		if c.ignoredByRepo {
@@ -198,6 +215,15 @@ fi
 		git("add", ".")
 		git("-c", "user.name=Smoke test", "-c", "user.email=smoke@example.invalid", "commit", "--quiet", "-m", "fixture")
 		head := git("rev-parse", "HEAD")
+		// One mark per update-index call, as git applies only one of them.
+		for _, mark := range strings.Fields(c.mark) {
+			git("update-index", "--"+mark, c.markedFile())
+		}
+		// Clear the marks with exactly the commands the refusal names.
+		if c.cleared {
+			git("update-index", "--no-assume-unchanged", c.markedFile())
+			git("update-index", "--no-skip-worktree", c.markedFile())
+		}
 		if c.dirty {
 			write("fixtures/sample.txt", "dirty\n")
 		}
@@ -298,6 +324,35 @@ fi
 			}
 		})
 	}
+	// A marked file hides its change from git status; the mark itself is
+	// refused, changed or not, and the file is named.
+	for _, c := range []struct {
+		name string
+		c    runAllCase
+	}{
+		{"changed file marked assume-unchanged", runAllCase{mark: "assume-unchanged", dirty: true}},
+		{"changed file marked skip-worktree", runAllCase{mark: "skip-worktree", dirty: true}},
+		{"unchanged file marked skip-worktree", runAllCase{mark: "skip-worktree"}},
+		// Both marks show as the lowercase tag s.
+		{"changed file with both marks", runAllCase{mark: "skip-worktree assume-unchanged", dirty: true}},
+		// Named as typed, not as an octal escape.
+		{"non-ASCII file name", runAllCase{mark: "skip-worktree", markFile: "fixtures/țară.txt"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, calls, code, _ := run(t, c.c)
+			if code != 1 || calls != "" || !strings.Contains(out, "marked assume-unchanged or skip-worktree") || !strings.Contains(out, "  "+c.c.markedFile()+"\n") ||
+				!strings.Contains(out, "  git update-index --no-assume-unchanged <file>\n  git update-index --no-skip-worktree <file>\n") {
+				t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+			}
+		})
+	}
+	t.Run("marks cleared with the commands the refusal names", func(t *testing.T) {
+		needHash(t)
+		out, calls, code, _ := run(t, runAllCase{mark: "skip-worktree assume-unchanged", cleared: true})
+		if code != 0 || !strings.Contains(out, "pins:") || !strings.HasSuffix(calls, "eval list -n 2\n") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
 	t.Run("a user's git setup does not hide the repository's own ignores", func(t *testing.T) {
 		// .hrn/ and the other entries of the repository's .gitignore still
 		// keep a clean tree clean: the run goes on to the pins and the evals.
@@ -341,6 +396,12 @@ fi
 	// suite commit; no eval may start.
 	t.Run("git status fails", func(t *testing.T) {
 		out, calls, code, _ := run(t, runAllCase{failGit: "status"})
+		if code == 0 || calls != "" || strings.Contains(out, "pins:") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("git ls-files fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{failGit: "ls-files"})
 		if code == 0 || calls != "" || strings.Contains(out, "pins:") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
