@@ -20,7 +20,7 @@ if [ -n "$status" ]; then
 fi
 # git status does not report a change to a file marked assume-unchanged (a
 # lowercase tag in ls-files -v) or skip-worktree (S), so refuse the marks.
-files=$(git ls-files -v)
+files=$(git -c core.quotePath=false ls-files -v)
 flagged=()
 while IFS= read -r line; do
 	case ${line%% *} in
@@ -28,8 +28,12 @@ while IFS= read -r line; do
 	esac
 done <<<"$files"
 if [ ${#flagged[@]} -gt 0 ]; then
-	echo "run-all: these files are marked assume-unchanged or skip-worktree, so a change to them would not show; clear the marks first (git update-index --no-assume-unchanged --no-skip-worktree <file>):" >&2
+	# update-index takes one of the two marks per call, so the fix is two commands.
+	echo "run-all: these files are marked assume-unchanged or skip-worktree, so a change to them would not show:" >&2
 	printf '  %s\n' "${flagged[@]}" >&2
+	echo "clear the marks first, one command each:" >&2
+	echo "  git update-index --no-assume-unchanged <file>" >&2
+	echo "  git update-index --no-skip-worktree <file>" >&2
 	exit 1
 fi
 
