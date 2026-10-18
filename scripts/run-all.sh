@@ -18,6 +18,20 @@ if [ -n "$status" ]; then
 	echo "run-all: commit or stash local changes first; the agents branch from HEAD" >&2
 	exit 1
 fi
+# git status does not report a change to a file marked assume-unchanged (a
+# lowercase tag in ls-files -v) or skip-worktree (S), so refuse the marks.
+files=$(git ls-files -v)
+flagged=()
+while IFS= read -r line; do
+	case ${line%% *} in
+	[a-z] | S) flagged+=("${line#* }") ;;
+	esac
+done <<<"$files"
+if [ ${#flagged[@]} -gt 0 ]; then
+	echo "run-all: these files are marked assume-unchanged or skip-worktree, so a change to them would not show; clear the marks first (git update-index --no-assume-unchanged --no-skip-worktree <file>):" >&2
+	printf '  %s\n' "${flagged[@]}" >&2
+	exit 1
+fi
 
 suites=("$@")
 if [ ${#suites[@]} -eq 0 ]; then

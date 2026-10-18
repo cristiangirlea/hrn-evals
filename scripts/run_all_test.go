@@ -26,6 +26,9 @@ type runAllCase struct {
 	// ~/.gitconfig names as core.excludesFile; "hide-untracked" sets
 	// status.showUntrackedFiles=no in ~/.gitconfig.
 	userGit string
+	// mark sets "assume-unchanged" or "skip-worktree" on fixtures/sample.txt
+	// after the commit, so that git status no longer reports a change to it.
+	mark string
 	// ignoredByRepo commits a .gitignore holding .hrn/ and leaves a file
 	// under .hrn/, as an eval does.
 	ignoredByRepo bool
@@ -198,6 +201,9 @@ fi
 		git("add", ".")
 		git("-c", "user.name=Smoke test", "-c", "user.email=smoke@example.invalid", "commit", "--quiet", "-m", "fixture")
 		head := git("rev-parse", "HEAD")
+		if c.mark != "" {
+			git("update-index", "--"+c.mark, "fixtures/sample.txt")
+		}
 		if c.dirty {
 			write("fixtures/sample.txt", "dirty\n")
 		}
@@ -298,6 +304,23 @@ fi
 			}
 		})
 	}
+	// A marked file hides its change from git status; the mark itself is
+	// refused, changed or not, and the file is named.
+	for _, c := range []struct {
+		name string
+		c    runAllCase
+	}{
+		{"changed file marked assume-unchanged", runAllCase{mark: "assume-unchanged", dirty: true}},
+		{"changed file marked skip-worktree", runAllCase{mark: "skip-worktree", dirty: true}},
+		{"unchanged file marked skip-worktree", runAllCase{mark: "skip-worktree"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, calls, code, _ := run(t, c.c)
+			if code != 1 || calls != "" || !strings.Contains(out, "marked assume-unchanged or skip-worktree") || !strings.Contains(out, "  fixtures/sample.txt\n") {
+				t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+			}
+		})
+	}
 	t.Run("a user's git setup does not hide the repository's own ignores", func(t *testing.T) {
 		// .hrn/ and the other entries of the repository's .gitignore still
 		// keep a clean tree clean: the run goes on to the pins and the evals.
@@ -341,6 +364,12 @@ fi
 	// suite commit; no eval may start.
 	t.Run("git status fails", func(t *testing.T) {
 		out, calls, code, _ := run(t, runAllCase{failGit: "status"})
+		if code == 0 || calls != "" || strings.Contains(out, "pins:") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("git ls-files fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{failGit: "ls-files"})
 		if code == 0 || calls != "" || strings.Contains(out, "pins:") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
