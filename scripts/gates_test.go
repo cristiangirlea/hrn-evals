@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // suiteGates returns every gate command of every suite under ../suites,
@@ -77,7 +78,17 @@ func TestGatesReachBashIntact(t *testing.T) {
 		for start := 0; start < len(gates); start += 8 {
 			chunk := gates[start:min(start+8, len(gates))]
 			args := append([]string{"-c", echo, "_", sep}, chunk...)
-			out, err := exec.Command(bash, args...).Output()
+			// Git Bash can fail to start under load (0xc0000142); that says
+			// nothing about the gates, so a failed start is tried again.
+			var out []byte
+			var err error
+			for attempt := 1; ; attempt++ {
+				out, err = exec.Command(bash, args...).Output()
+				if err == nil || attempt == 5 {
+					break
+				}
+				time.Sleep(time.Duration(attempt) * 200 * time.Millisecond)
+			}
 			if err != nil {
 				t.Fatalf("%s: bash: %v", where, err)
 			}
