@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,16 @@ func TestRunAll(t *testing.T) {
 	bash, err := exec.LookPath("bash")
 	if err != nil {
 		t.Skip("bash is not on PATH")
+	}
+	// From PowerShell, WSL's bash comes first on PATH; it drops the sandbox's
+	// environment (only WSLENV crosses) and cannot run Windows paths. The
+	// script runs under Git Bash, so take the one installed beside git.
+	uname, _ := exec.Command(bash, "--noprofile", "--norc", "-c", "uname -s").Output()
+	if !keepBash(runtime.GOOS, string(uname)) {
+		git, _ := exec.LookPath("git")
+		if bash = gitBashFor(git); bash == "" {
+			t.Skipf("the first bash on PATH is not Git Bash, and there is no Git for Windows bash beside git (%q); run-all.sh runs under Git Bash", git)
+		}
 	}
 	script, err := os.ReadFile("run-all.sh")
 	if err != nil {
@@ -502,4 +513,98 @@ fi
 			t.Fatalf("exit %d, calls %q, want exit 1 and %q:\n%s", code, calls, want, out)
 		}
 	})
+}
+
+// keepBash says whether the first bash on PATH can run the tests: any bash
+// off Windows, and on Windows only Git Bash (uname -s MINGW* or MSYS*), not
+// WSL's, whose uname says Linux, or prints nothing when no distro is set up.
+func keepBash(goos, unameS string) bool {
+	if goos != "windows" {
+		return true
+	}
+	s := strings.TrimSpace(unameS)
+	return strings.HasPrefix(s, "MINGW") || strings.HasPrefix(s, "MSYS")
+}
+
+// gitBashFor returns Git for Windows' wrapper bash (<root>\bin\bash.exe, which
+// puts the MSYS tools on PATH) for a git.exe at <root>\cmd, <root>\bin or
+// <root>\mingw64\bin, or "" when there is none.
+func gitBashFor(git string) string {
+	if git == "" {
+		return ""
+	}
+	dir := filepath.Dir(git)
+	for range 3 {
+		if p := filepath.Join(dir, "bin", "bash.exe"); fileExists(p) {
+			return p
+		}
+		dir = filepath.Dir(dir)
+	}
+	return ""
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func TestKeepBash(t *testing.T) {
+	for _, c := range []struct {
+		goos, uname string
+		want        bool
+	}{
+		{"linux", "Linux\n", true}, // a Linux host, WSL's included
+		{"darwin", "Darwin\n", true},
+		{"windows", "MINGW64_NT-10.0-26200\n", true},
+		{"windows", "MSYS_NT-10.0-26200\n", true},
+		{"windows", "Linux\n", false}, // WSL's bash from Windows
+		{"windows", "", false},        // WSL's bash with no distro
+	} {
+		if got := keepBash(c.goos, c.uname); got != c.want {
+			t.Errorf("keepBash(%q, %q) = %v, want %v", c.goos, c.uname, got, c.want)
+		}
+	}
+}
+
+func TestGitBashFor(t *testing.T) {
+	touch := func(t *testing.T, path string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, nil, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, c := range []struct {
+		name, git string
+		bashes    []string // bash.exe files to create, relative to the root
+		want      string   // relative to the root, "" for none
+	}{
+		{"git in cmd", "cmd/git.exe", []string{"bin/bash.exe"}, "bin/bash.exe"},
+		{"git in bin", "bin/git.exe", []string{"bin/bash.exe"}, "bin/bash.exe"},
+		{"git in mingw64/bin", "mingw64/bin/git.exe", []string{"bin/bash.exe"}, "bin/bash.exe"},
+		{"only the MSYS bash", "cmd/git.exe", []string{"usr/bin/bash.exe"}, ""},
+		{"scoop shim", "scoop/shims/git.exe", nil, ""},
+		{"no bash near git", "cmd/git.exe", nil, ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			git := filepath.Join(root, filepath.FromSlash(c.git))
+			touch(t, git)
+			for _, b := range c.bashes {
+				touch(t, filepath.Join(root, filepath.FromSlash(b)))
+			}
+			want := ""
+			if c.want != "" {
+				want = filepath.Join(root, filepath.FromSlash(c.want))
+			}
+			if got := gitBashFor(git); got != want {
+				t.Errorf("gitBashFor(%q) = %q, want %q", git, got, want)
+			}
+		})
+	}
+	if got := gitBashFor(""); got != "" {
+		t.Errorf(`gitBashFor("") = %q, want ""`, got)
+	}
 }
