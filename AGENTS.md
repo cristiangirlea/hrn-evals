@@ -63,6 +63,9 @@ both ways (README, "Adding a suite", step 4); the run of each variant is the own
 
 - Never put credentials, private data or client code into a suite or a fixture.
 - Gates run in Git Bash on Windows with no gcc (no `go test -race`), and must print why they failed.
+  hrn hands a gate to `bash -c` from Go, so a doubled backslash anywhere in a gate reaches bash as
+  one (write `[.]` or `[\]`), and `grep` with both `-i` and `-F` aborts without a UTF-8 locale;
+  `scripts/gates_test.go` checks both. Check a gate both ways as hrn runs it, not at a prompt.
 - A suite's matrix compares the two agents in daily use (`claude` with Sonnet, `codex`); ask
   before adding a variant that bills per token (`api` backend) or a `judge`.
   A `suites/routing/` suite compares backends, models and efforts instead, so that
