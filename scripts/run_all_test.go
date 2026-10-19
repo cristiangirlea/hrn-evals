@@ -306,7 +306,7 @@ fi
 			t.Fatalf("exit %d:\n%s", code, out)
 		}
 		previous := -1
-		for _, want := range []string{"pins:\n", "hrn version:\n", "hrn v0.0.0 (commit stub123)\n", "codex version:\n", "codex stub version\n", "suite commit: " + head + "\n", "fixture SHA-256 hashes:\n", fixtureHash, "=== suites/golden/a.json\n", "stub eval\n"} {
+		for _, want := range []string{"pins:\n", "hrn version:\n", "hrn v0.0.0 (commit stub123)\n", "codex version:\n", "codex stub version\n", "suite commit: " + head + "\n", "\nmodel ids: a spec's variant asks for a model or for the backend's default (sonnet is an alias); in the batch record (~/.hrn/batches/<id>.json) tasks[].attempts[].result.model is the id the backend reported when result.model_reported is true (claude), otherwise the model asked for; codex reports none, so a codex variant without a model ran codex's configured default, which is not recorded\n", "fixture SHA-256 hashes:\n", fixtureHash, "=== suites/golden/a.json\n", "stub eval\n"} {
 			pos := strings.Index(out, want)
 			if pos <= previous {
 				t.Fatalf("missing or out of order %q:\n%s", want, out)

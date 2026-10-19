@@ -76,7 +76,7 @@ for backend in claude codex; do
 done
 commit=$(git rev-parse HEAD)
 echo "suite commit: $commit"
-echo "model ids: eval specs save the Claude alias sonnet and no Codex model; the resolved Claude id is in the batch record's attempt result; Codex records no model id"
+echo "model ids: a spec's variant asks for a model or for the backend's default (sonnet is an alias); in the batch record (~/.hrn/batches/<id>.json) tasks[].attempts[].result.model is the id the backend reported when result.model_reported is true (claude), otherwise the model asked for; codex reports none, so a codex variant without a model ran codex's configured default, which is not recorded"
 echo "fixture SHA-256 hashes:"
 if command -v sha256sum >/dev/null 2>&1; then
 	hash=(sha256sum)
