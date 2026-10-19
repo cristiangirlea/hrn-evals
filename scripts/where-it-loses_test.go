@@ -539,8 +539,11 @@ func TestOneTaskSuiteRerunFix(t *testing.T) {
 		{"cell alone", `{"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, "fixed in eval later"},
 		{"cell alone under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, ""},
 		{"cell alone without the gate", `{"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"}]}`, ""},
-		// A later run of the whole suite is trusted as such, as it always was.
-		{"whole suite under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+		// A later run of the whole suite is trusted as such under the same gates,
+		// even where another top-level field (here the mode) would fail the
+		// re-run rule; under other gates its pass means something else.
+		{"whole suite in another mode", `{"mode":"auto","gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+		{"whole suite under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":1,"total":1}]}}`)
@@ -550,13 +553,15 @@ func TestOneTaskSuiteRerunFix(t *testing.T) {
 		})
 	}
 	// With unnamed variants the key holds the names hrn gives them, so the same
-	// holds: the cell alone is judged as a cell, and a run of the whole suite is
-	// trusted even when it spells the names out. Keyed by the raw names, every
-	// unnamed matrix was one suite, and the two cases came out the other way.
+	// holds: the cell alone is judged as a cell, and a run of the whole suite
+	// under the same gates is trusted even when it spells the names out. Keyed
+	// by the raw names, every unnamed matrix was one suite, and the first two
+	// cases came out the other way.
 	unnamed := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":{"repeats":3,"gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"backend":"claude"},{"backend":"codex"}]}}`)
 	for _, tc := range []struct{ name, spec, want string }{
 		{"unnamed cell alone under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"backend":"codex"}]}`, ""},
-		{"whole suite with the names spelled out, under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+		{"whole suite with the names spelled out, in another mode", `{"mode":"auto","gate":["go test ./..."],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, "fixed in eval later"},
+		{"whole suite with the names spelled out, under another gate", `{"gate":["true"],"tasks":[` + task + `],"matrix":[{"name":"codex","backend":"codex"},{"name":"claude","backend":"claude"}]}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"x","variant":"codex","passed":1,"total":1}]}}`)
@@ -683,6 +688,7 @@ func TestRuleSentenceMatchesComment(t *testing.T) {
 		},
 		"fixedIn names": {
 			"a later run of the same suite (the same task ID set and matrix variant names",
+			"with the failing task's gates and expect unchanged",
 		},
 		"suiteLabels reads": {
 			"file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs",
@@ -826,5 +832,49 @@ func TestRepositorySuitesLabel(t *testing.T) {
 	}
 	if len(labels.labels) == 0 {
 		t.Fatal("no suite under suites/ was labelled")
+	}
+}
+
+// A later run of the same suite counts as a fix only when what decides the
+// failing task's pass is unchanged: its own gates, or the spec's top-level gate
+// it inherits, and its expect pattern.
+func TestSuiteFixNeedsSameGates(t *testing.T) {
+	decode := func(s string) evalRecord {
+		t.Helper()
+		var e evalRecord
+		if err := json.Unmarshal([]byte(s), &e); err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	const matrix = `"matrix":[{"name":"small"},{"name":"large"}]`
+	spec := func(top, a, b string) string {
+		return `{` + top + `"tasks":[` + a + `,` + b + `],` + matrix + `}`
+	}
+	const (
+		top   = `"gate":["go vet ./..."],`
+		ownA  = `{"id":"a","prompt":"do a","gate":["go test ./a"]}`
+		bareB = `{"id":"b","prompt":"do b"}`
+	)
+	old := decode(`{"id":"old","started":"2026-10-01T00:00:00Z","spec":` + spec(top, ownA, bareB) + `}`)
+	for _, tc := range []struct {
+		name, spec, task, want string
+	}{
+		{"same gates", spec(top, ownA, bareB), "a", "fixed in eval later"},
+		{"other prompt, same gates", spec(top, `{"id":"a","prompt":"do a differently","gate":["go test ./a"]}`, bareB), "a", "fixed in eval later"},
+		{"failing task's own gate changed", spec(top, `{"id":"a","prompt":"do a","gate":["go test ./a/..."]}`, bareB), "a", ""},
+		{"another task's gate changed", spec(top, ownA, `{"id":"b","prompt":"do b","gate":["true"]}`), "a", "fixed in eval later"},
+		{"top-level gate changed, task has its own", spec(`"gate":["true"],`, ownA, bareB), "a", "fixed in eval later"},
+		{"top-level gate changed, task inherits it", spec(`"gate":["true"],`, ownA, bareB), "b", ""},
+		{"top-level gate dropped, task inherits it", spec(``, ownA, bareB), "b", ""},
+		{"an empty own gate list inherits the top-level gate", spec(top, ownA, `{"id":"b","prompt":"do b","gate":[]}`), "b", "fixed in eval later"},
+		{"expect added", spec(top, `{"id":"a","prompt":"do a","gate":["go test ./a"],"expect":"(?i)done"}`, bareB), "a", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"` + tc.task + `","variant":"small","passed":1,"total":1}]}}`)
+			if got := fixedIn([]evalRecord{later}, old, taskResult{Task: tc.task, Variant: "small", Total: 1}); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
