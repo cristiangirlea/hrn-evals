@@ -688,7 +688,7 @@ func TestRuleSentenceMatchesComment(t *testing.T) {
 		},
 		"fixedIn names": {
 			"a later run of the same suite (the same task ID set and matrix variant names",
-			"with the failing task's gates and expect unchanged",
+			"with what decides the failing task's pass unchanged: its gates, expect, gate timeout and protected files",
 		},
 		"suiteLabels reads": {
 			"file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs",
@@ -863,12 +863,19 @@ func TestSuiteFixNeedsSameGates(t *testing.T) {
 		{"same gates", spec(top, ownA, bareB), "a", "fixed in eval later"},
 		{"other prompt, same gates", spec(top, `{"id":"a","prompt":"do a differently","gate":["go test ./a"]}`, bareB), "a", "fixed in eval later"},
 		{"failing task's own gate changed", spec(top, `{"id":"a","prompt":"do a","gate":["go test ./a/..."]}`, bareB), "a", ""},
-		{"another task's gate changed", spec(top, ownA, `{"id":"b","prompt":"do b","gate":["true"]}`), "a", "fixed in eval later"},
+		// The mode changes too, so that the re-run rule cannot credit it.
+		{"another task's gate changed", spec(`"mode":"auto",`+top, ownA, `{"id":"b","prompt":"do b","gate":["true"]}`), "a", "fixed in eval later"},
 		{"top-level gate changed, task has its own", spec(`"gate":["true"],`, ownA, bareB), "a", "fixed in eval later"},
 		{"top-level gate changed, task inherits it", spec(`"gate":["true"],`, ownA, bareB), "b", ""},
 		{"top-level gate dropped, task inherits it", spec(``, ownA, bareB), "b", ""},
-		{"an empty own gate list inherits the top-level gate", spec(top, ownA, `{"id":"b","prompt":"do b","gate":[]}`), "b", "fixed in eval later"},
+		// hrn runs a task with an own empty gate list with no gates at all.
+		{"an own empty gate list runs no gates", spec(top, ownA, `{"id":"b","prompt":"do b","gate":[]}`), "b", ""},
+		{"the inherited gate written out as the task's own", spec(top, ownA, `{"id":"b","prompt":"do b","gate":["go vet ./..."]}`), "b", "fixed in eval later"},
 		{"expect added", spec(top, `{"id":"a","prompt":"do a","gate":["go test ./a"],"expect":"(?i)done"}`, bareB), "a", ""},
+		{"own gate timeout added", spec(top, `{"id":"a","prompt":"do a","gate":["go test ./a"],"gate_timeout":"1h0m0s"}`, bareB), "a", ""},
+		{"top-level gate timeout added", spec(`"gate_timeout":"1h0m0s",`+top, ownA, bareB), "a", ""},
+		{"protected files added", spec(`"protect":["**/*_test.go"],`+top, ownA, bareB), "a", ""},
+		{"protect mode changed", spec(`"protect_mode":"warn",`+top, ownA, bareB), "a", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			later := decode(`{"id":"later","started":"2026-10-02T00:00:00Z","spec":` + tc.spec + `,"table":{"tasks":[{"task":"` + tc.task + `","variant":"small","passed":1,"total":1}]}}`)
