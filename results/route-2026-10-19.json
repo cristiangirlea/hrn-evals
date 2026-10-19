@@ -1,0 +1,65 @@
+{
+  "debug": {
+    "backend": "claude",
+    "model": "sonnet",
+    "effort": "medium",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "implement": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "ops": {
+    "backend": "codex",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "plan": {
+    "backend": "claude",
+    "model": "sonnet",
+    "effort": "medium",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "refactor": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "research": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "review": {
+    "backend": "codex",
+    "model": "gpt-6.1-sol",
+    "effort": "medium",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "test": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "7bd77",
+    "set": "2026-10-19"
+  },
+  "unknown": {
+    "backend": "codex",
+    "model": "gpt-6-luna",
+    "effort": "low",
+    "eval": "fbc00",
+    "set": "2026-10-18"
+  }
+}
