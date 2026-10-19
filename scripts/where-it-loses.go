@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -483,13 +484,50 @@ func (e evalRecord) taskGates(taskID string) (string, bool) {
 	return string(gates), err == nil
 }
 
+// variantDef is the named variant's definition for one task as JSON, without
+// its name and with backend, model and effort resolved as hrn picks them: the
+// variant's, else the task's, else the spec's, an empty one counting as unset.
+// It reports false for a variant the matrix does not hold.
+func (e evalRecord) variantDef(name, taskID string) (string, bool) {
+	raw, ok := entry(e.Spec.Matrix, specEntry.variantName, name)
+	if !ok {
+		return "", false
+	}
+	rawTask, _ := entry(e.Spec.Tasks, func(s specEntry) string { return s.ID }, taskID)
+	var v, task, top map[string]any
+	if json.Unmarshal([]byte(raw), &v) != nil || json.Unmarshal([]byte(e.Spec.Rest), &top) != nil {
+		return raw, true
+	}
+	if rawTask != "" && json.Unmarshal([]byte(rawTask), &task) != nil {
+		return raw, true
+	}
+	delete(v, "name")
+	own := maps.Clone(v)
+	for _, key := range []string{"backend", "model", "effort"} {
+		delete(v, key)
+		for _, level := range []map[string]any{own, task, top} {
+			if value := level[key]; value != nil && value != "" {
+				v[key] = value
+				break
+			}
+		}
+	}
+	def, err := json.Marshal(v)
+	if err != nil {
+		return raw, true
+	}
+	return string(def), true
+}
+
 // fixedIn names the earliest later eval in which the failing case's task and
 // variant passed every repetition: a later run of the same suite (the same task
-// ID set and matrix variant names, as suites are labelled, with what decides
-// the failing task's pass unchanged: its gates, expect, gate timeout and
-// protected files; see taskGates), or a re-run whose spec defines the same cell
-// (sameCell). The matrix names keep a one-task suite's cell, re-run alone, out
-// of the suite rule; taskGates keeps a pass under other gates from counting.
+// ID set and matrix variant names, as suites are labelled, with the failing
+// variant's definition and what decides the failing task's pass unchanged: its
+// gates, expect, gate timeout and protected files; see taskGates), or a re-run
+// whose spec defines the same cell (sameCell). The matrix names keep a one-task
+// suite's cell, re-run alone, out of the suite rule; taskGates keeps a pass
+// under other gates from counting, and the variant's definition a pass by
+// another model behind the same name.
 func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 	var fixed *evalRecord
 	oldGates, oldOK := old.taskGates(task.Task)
@@ -499,7 +537,10 @@ func fixedIn(evals []evalRecord, old evalRecord, task taskResult) string {
 			continue
 		}
 		laterGates, laterOK := e.taskGates(task.Task)
-		sameSuite := e.labelKey() == old.labelKey() && oldOK && laterOK && oldGates == laterGates
+		oldVariant, oldVOK := old.variantDef(task.Variant, task.Task)
+		laterVariant, laterVOK := e.variantDef(task.Variant, task.Task)
+		sameSuite := e.labelKey() == old.labelKey() && oldOK && laterOK && oldGates == laterGates &&
+			oldVOK == laterVOK && oldVariant == laterVariant
 		if !sameSuite && !sameCell(old, *e, task) {
 			continue
 		}
@@ -571,7 +612,7 @@ func generate(home, out, command string) error {
 		date = latest.UTC().Format("2006-01-02")
 	}
 	fmt.Fprintf(&page, "# Where it loses\n\nDate: %s (latest saved eval, UTC).\n\nProduced by: <code>%s</code>\n\nEvals read: %d. Unreadable or invalid evals skipped: %d. Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval whose task IDs have all been renamed since is left out too): %d.\n\n", date, cell(command), len(evals), skipped, others)
-	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names, with what decides the failing task's pass unchanged: its gates, expect, gate timeout and protected files), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here, without terminal escape sequences, control characters or bidirectional controls; bytes that are not valid UTF-8 show as U+FFFD.\n\n## Failing cases\n")
+	page.WriteString("Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names, with the failing variant's definition and what decides the failing task's pass unchanged: its gates, expect, gate timeout and protected files), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here, without terminal escape sequences, control characters or bidirectional controls; bytes that are not valid UTF-8 show as U+FFFD.\n\n## Failing cases\n")
 	type failure struct {
 		e evalRecord
 		t taskResult
