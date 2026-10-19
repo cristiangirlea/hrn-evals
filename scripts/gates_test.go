@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -43,14 +44,30 @@ func suiteGates(t *testing.T) map[string][]string {
 	return gates
 }
 
-// hrn runs a gate as bash -c <command> through os/exec. On Windows the
-// command line Go builds is parsed again by Git Bash's runtime, which drops
-// one of two backslashes inside double quotes, so a gate can reach bash
-// changed. Every gate is passed the same way here and echoed back.
+// gateBash picks bash as hrn's tools.Shell does: the one on PATH unless it is
+// WSL's launcher in System32, else Git Bash at its install path.
+func gateBash() (string, bool) {
+	if path, err := exec.LookPath("bash"); err == nil && !(runtime.GOOS == "windows" && strings.Contains(strings.ToLower(filepath.ToSlash(path)), "/system32/")) {
+		return path, true
+	}
+	if runtime.GOOS == "windows" {
+		for _, p := range []string{`C:\Program Files\Git\bin\bash.exe`, `C:\Program Files\Git\usr\bin\bash.exe`} {
+			if _, err := os.Stat(p); err == nil {
+				return p, true
+			}
+		}
+	}
+	return "", false
+}
+
+// hrn runs a gate as bash -c <command> through os/exec. On Windows Go quotes
+// the whole argument and Git Bash's runtime parses it again, which turns any
+// doubled backslash into one, so a gate can reach bash changed. Every gate is
+// passed the same way here and echoed back.
 func TestGatesReachBashIntact(t *testing.T) {
-	bash, err := exec.LookPath("bash")
-	if err != nil {
-		t.Skip("bash is not on PATH")
+	bash, ok := gateBash()
+	if !ok {
+		t.Skip("no bash that hrn would use")
 	}
 	// The separator travels as an argument too, so the script needs no escapes.
 	sep := string(rune(31))
@@ -75,13 +92,38 @@ func TestGatesReachBashIntact(t *testing.T) {
 }
 
 // GNU grep 3.0 in Git for Windows aborts on -i with -F when no UTF-8 locale
-// is set, as in a gate.
-var grepIgnoreCaseFixed = regexp.MustCompile(`\bgrep\s+(-[A-Za-z]*i[A-Za-z]*F|-[A-Za-z]*F[A-Za-z]*i|-[A-Za-z]*i[A-Za-z]*\s+-[A-Za-z]*F|-[A-Za-z]*F[A-Za-z]*\s+-[A-Za-z]*i)`)
+// is set, as in a gate. A grep or fgrep call runs to the next pipe, list
+// operator or closing parenthesis; git grep has its own engine and is left out.
+var grepCall = regexp.MustCompile(`(^|[\s|;&(` + "`" + `])(git\s+)?(f?grep)(\s[^|;&)]*)`)
+
+func grepIgnoreCaseFixed(gate string) (string, bool) {
+	for _, m := range grepCall.FindAllStringSubmatch(gate, -1) {
+		if m[2] != "" {
+			continue
+		}
+		ignoreCase, fixed := false, m[3] == "fgrep"
+		for _, word := range strings.Fields(m[4]) {
+			switch {
+			case word == "--ignore-case":
+				ignoreCase = true
+			case word == "--fixed-strings":
+				fixed = true
+			case len(word) > 1 && word[0] == '-' && word[1] != '-':
+				ignoreCase = ignoreCase || strings.Contains(word[1:], "i")
+				fixed = fixed || strings.Contains(word[1:], "F")
+			}
+		}
+		if ignoreCase && fixed {
+			return strings.TrimSpace(m[0]), true
+		}
+	}
+	return "", false
+}
 
 func TestGatesAvoidGrepIgnoreCaseFixed(t *testing.T) {
 	for where, gates := range suiteGates(t) {
 		for _, gate := range gates {
-			if m := grepIgnoreCaseFixed.FindString(gate); m != "" {
+			if m, bad := grepIgnoreCaseFixed(gate); bad {
 				t.Errorf("%s: %q aborts without a UTF-8 locale on Git for Windows; drop -F (or -i):\n%s", where, m, gate)
 			}
 		}
@@ -90,16 +132,28 @@ func TestGatesAvoidGrepIgnoreCaseFixed(t *testing.T) {
 
 func TestGrepIgnoreCaseFixedPattern(t *testing.T) {
 	for gate, want := range map[string]bool{
-		"grep -qiF 'x' f":   true,
-		"grep -qFi 'x' f":   true,
-		"grep -i -F 'x' f":  true,
-		"grep -F -qi 'x' f": true,
-		"grep -qi 'x' f":    false,
-		"grep -qF 'x' f":    false,
-		"grep -qiE 'x' f":   false,
+		"grep -qiF 'x' f":                   true,
+		"grep -qFi 'x' f":                   true,
+		"grep -i -F 'x' f":                  true,
+		"grep -F -qi 'x' f":                 true,
+		"grep -E -i -F x f":                 true,
+		"grep -q -i -F x f":                 true,
+		"grep -F -e x -i f":                 true,
+		"grep --ignore-case -F x f":         true,
+		"grep -i --fixed-strings x f":       true,
+		"fgrep -i x f":                      true,
+		"tr a b | grep -qiF 'x'":            true,
+		"echo $(grep -iF x f)":              true,
+		"grep -qi 'x' f":                    false,
+		"grep -qF 'x' f":                    false,
+		"grep -qiE 'x' f":                   false,
+		"fgrep x f":                         false,
+		"grep -qi x f | grep -qF y":         false,
+		"git grep -iF x":                    false,
+		"cat f | grep -q x; grep -F -- y f": false,
 	} {
-		if got := grepIgnoreCaseFixed.MatchString(gate); got != want {
-			t.Errorf("%q: match = %v, want %v", gate, got, want)
+		if _, got := grepIgnoreCaseFixed(gate); got != want {
+			t.Errorf("%q: flagged = %v, want %v", gate, got, want)
 		}
 	}
 }
