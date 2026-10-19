@@ -242,8 +242,10 @@ from them. Checked against [the publication gate](../docs/publication-gate.md):
     evals' codex cells carry it. `run-all.sh` printed "codex: (not installed)" because codex is
     not on Git Bash's `PATH`, while hrn runs it from its install path.
   - Claude Code 2.1.284, as `run-all.sh` printed it.
-  - Models, as the batch records report them: `gpt-6.1-sol`, `claude-sonnet-5-5`, `gpt-6-luna`,
-    `claude-haiku-5-5`.
+  - Models: `claude-sonnet-5-5` and `claude-haiku-5-5` as Claude Code reported them in the batch
+    records (`model_reported` set on all 144 Claude cells); `gpt-6.1-sol` and `gpt-6-luna` from
+    codex's own rollout files, one per codex cell. Codex reports no model to hrn, so the batch
+    records' codex `model` is only the id hrn asked for.
   - Suite commit `1962cfc5b50ee517608461b248ef7829c68149cb`, both batch records' `base`
     (batches `20261019-111134-10aefc` and `20261019-113313-340c9a`).
   - Fixture SHA-256, as `run-all.sh` printed them, for every file under `fixtures/purposes/` and
