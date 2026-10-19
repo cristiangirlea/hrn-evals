@@ -688,7 +688,7 @@ func TestRuleSentenceMatchesComment(t *testing.T) {
 		},
 		"fixedIn names": {
 			"a later run of the same suite (the same task ID set and matrix variant names",
-			"with what decides the failing task's pass unchanged: its gates, expect, gate timeout and protected files",
+			"with the failing variant's definition and what decides the failing task's pass unchanged: its gates, expect, gate timeout and protected files",
 		},
 		"suiteLabels reads": {
 			"file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs",
@@ -832,6 +832,47 @@ func TestRepositorySuitesLabel(t *testing.T) {
 	}
 	if len(labels.labels) == 0 {
 		t.Fatal("no suite under suites/ was labelled")
+	}
+}
+
+// A later run of the same suite counts as a fix only when the failing variant
+// is defined as before: another model behind the same name is another arm.
+func TestSuiteFixNeedsSameVariant(t *testing.T) {
+	// The mode differs between the two, so that only the suite rule can credit
+	// the pass.
+	record := func(id, started, top, taskField, small string) evalRecord {
+		t.Helper()
+		var e evalRecord
+		s := `{"id":"` + id + `","started":"` + started + `","spec":{"mode":"` + id + `",` + top + `"tasks":[{"id":"a","prompt":"do a",` + taskField + `"gate":["true"]}],` +
+			`"matrix":[` + small + `,{"name":"large"}]},` +
+			`"table":{"tasks":[{"task":"a","variant":"small","passed":1,"total":1}]}}`
+		if err := json.Unmarshal([]byte(s), &e); err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	const (
+		haiku = `{"name":"small","backend":"claude","model":"haiku"}`
+		bare  = `{"name":"small","backend":"claude"}`
+	)
+	for _, tc := range []struct{ name, oldTop, oldTask, oldSmall, top, task, small, want string }{
+		{"same model", "", "", haiku, "", "", haiku, "fixed in eval later"},
+		{"model changed, name kept", "", "", haiku, "", "", `{"name":"small","backend":"claude","model":"claude-haiku-5-5"}`, ""},
+		{"same model, moved to the top level", "", "", haiku, `"model":"haiku",`, "", bare, "fixed in eval later"},
+		{"other model at the top level", "", "", haiku, `"model":"claude-haiku-5-5",`, "", bare, ""},
+		{"effort added", "", "", haiku, "", "", `{"name":"small","backend":"claude","model":"haiku","effort":"low"}`, ""},
+		{"the task's own model changed", "", `"model":"haiku",`, bare, "", `"model":"claude-haiku-5-5",`, bare, ""},
+		// The task's own model wins over the top level's, so the cell ran the same model.
+		{"top-level model changed under the task's own", `"model":"haiku",`, `"model":"haiku",`, bare, `"model":"claude-haiku-5-5",`, `"model":"haiku",`, bare, "fixed in eval later"},
+		{"an empty model is no model", "", "", `{"name":"small","backend":"claude","model":""}`, "", "", bare, "fixed in eval later"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			old := record("old", "2026-10-01T00:00:00Z", tc.oldTop, tc.oldTask, tc.oldSmall)
+			later := record("later", "2026-10-02T00:00:00Z", tc.top, tc.task, tc.small)
+			if got := fixedIn([]evalRecord{later}, old, taskResult{Task: "a", Variant: "small", Total: 1}); got != tc.want {
+				t.Errorf("fixedIn = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
