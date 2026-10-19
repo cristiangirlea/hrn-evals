@@ -13,7 +13,12 @@ import (
 // runAllCase says how the sandbox for one run of run-all.sh differs from a
 // clean checkout with every tool present.
 type runAllCase struct {
-	noCodex   bool
+	noCodex bool
+	// hrnCodex says what the stub hrn backends prints for codex: "elsewhere"
+	// a path outside PATH (as hrn finds codex's own install on Windows),
+	// "both" claude off PATH too, both at paths outside it, "unknown" the
+	// not-found line, "fail" nothing and exit 1.
+	hrnCodex  string
 	dirty     bool   // a tracked file changed after the commit
 	untracked bool   // a new file left uncommitted
 	hash      string // the hash tool on PATH: "sha256sum" (default), "shasum" or "none"
@@ -186,9 +191,37 @@ exec `+quote(paths["git"])+` "$@"
 exec `+realHash+` "$@"
 `)
 		}
+		// hrn backends prints its lines as hrn does, with codex at a native
+		// path outside PATH (backslashes on Windows) for "elsewhere".
+		backends := "true"
+		switch c.hrnCodex {
+		case "elsewhere":
+			backends = "printf '%s\\n' " + quote("  ✗ api       disabled: set ANTHROPIC_API_KEY (or ANTHROPIC_AUTH_TOKEN)") + " " +
+				quote("  ✓ claude    enabled (default): /nowhere/claude") + " " +
+				quote("  ✓ codex     enabled: "+filepath.Join(root, "opt", "codex")) + " " +
+				quote("              limit reached until 12:00")
+			write("opt/codex", shell+"printf 'codex hrn-path version\\n'\n")
+		case "both":
+			// Neither backend on PATH: claude is the default, at a path with a
+			// space on a CRLF line, and codex's --version fails.
+			backends = "printf '%s\\r\\n' " + quote("  ✓ claude    enabled (default): "+filepath.Join(root, "opt", "my claude", "claude")) +
+				"; printf '%s\\n' " + quote("  ✓ codex     disabled: "+filepath.Join(root, "opt", "codex"))
+			write("opt/my claude/claude", shell+"printf 'claude hrn-path version\\n'\n")
+			write("opt/codex", shell+"exit 3\n")
+		case "unknown":
+			backends = "printf '%s\\n' " + quote("  ✓ claude    enabled (default): /nowhere/claude") + " " +
+				quote("  ✗ codex     enabled: codex not found on PATH or in known install locations")
+		case "fail":
+			backends = "exit 1"
+		case "":
+		default:
+			t.Fatalf("unknown hrnCodex %q", c.hrnCodex)
+		}
 		write("bin/hrn", shell+`printf '%s\n' "$*" >> calls
 if [ "$1" = version ]; then
  printf 'hrn v0.0.0 (commit stub123)\n'
+elif [ "$1" = backends ]; then
+ `+backends+`
 elif [ "$1 $2" = `+quote("eval "+c.failSuite)+` ]; then
  printf 'stub eval failed\n'
  exit 1
@@ -196,7 +229,9 @@ else
  printf 'stub eval\n'
 fi
 `)
-		write("bin/claude", shell+"printf 'claude stub version\\n'\n")
+		if c.hrnCodex != "both" {
+			write("bin/claude", shell+"printf 'claude stub version\\n'\n")
+		}
 		if !c.noCodex {
 			write("bin/codex", shell+"printf 'codex stub version\\n'\n")
 		}
@@ -271,10 +306,56 @@ fi
 			t.Errorf("calls = %q, want %q", calls, want)
 		}
 	})
+	// hrn runs codex from outside PATH; the pin is that binary's version.
+	t.Run("codex only where hrn finds it", func(t *testing.T) {
+		needHash(t)
+		out, calls, code, _ := run(t, runAllCase{noCodex: true, hrnCodex: "elsewhere"})
+		if code != 0 || strings.Contains(out, "(not installed)") || !strings.Contains(out, "claude version:\nclaude stub version\n") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+		if want := "version\nbackends\neval suites/golden/a.json\neval suites/golden/b.json\neval list -n 2\n"; calls != want {
+			t.Errorf("calls = %q, want %q", calls, want)
+		}
+		if !strings.Contains(out, "codex version (hrn backends: ") || !strings.Contains(out, filepath.Join("opt", "codex")+"):\ncodex hrn-path version\n") {
+			t.Fatalf("no codex pin from the path hrn prints:\n%s", out)
+		}
+	})
+	// hrn backends is asked once for both; the matched line's state has a
+	// space, its path a space and a CR, and a failing --version still pins.
+	t.Run("both backends only where hrn finds them", func(t *testing.T) {
+		needHash(t)
+		out, calls, code, _ := run(t, runAllCase{noCodex: true, hrnCodex: "both"})
+		if code != 0 || strings.Contains(out, "(not installed)") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+		if want := "version\nbackends\neval suites/golden/a.json\neval suites/golden/b.json\neval list -n 2\n"; calls != want {
+			t.Errorf("calls = %q, want %q", calls, want)
+		}
+		if !strings.Contains(out, "claude version (hrn backends: ") || !strings.Contains(out, filepath.Join("opt", "my claude", "claude")+"):\nclaude hrn-path version\n") ||
+			!strings.Contains(out, "codex: version unavailable\n") {
+			t.Fatalf("missing claude pin or codex fallback:\n%s", out)
+		}
+	})
+	t.Run("codex unknown to PATH and hrn", func(t *testing.T) {
+		needHash(t)
+		out, calls, code, _ := run(t, runAllCase{noCodex: true, hrnCodex: "unknown"})
+		if code != 0 || !strings.Contains(out, "codex: (not installed)\n") || !strings.HasPrefix(calls, "version\nbackends\n") || !strings.HasSuffix(calls, "eval list -n 2\n") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	// A failing hrn backends must stop the run before any eval, not pin
+	// "(not installed)" for a backend hrn would run.
+	t.Run("hrn backends fails", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{noCodex: true, hrnCodex: "fail"})
+		if code == 0 || calls != "version\nbackends\n" || strings.Contains(out, "codex: (not installed)") {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
 	t.Run("codex absent", func(t *testing.T) {
 		needHash(t)
+		// hrn backends prints nothing for codex.
 		out, calls, code, _ := run(t, runAllCase{noCodex: true})
-		if code != 0 || !strings.Contains(out, "codex: (not installed)\n") || !strings.HasSuffix(calls, "eval list -n 2\n") {
+		if code != 0 || !strings.Contains(out, "codex: (not installed)\n") || !strings.HasPrefix(calls, "version\nbackends\n") || !strings.HasSuffix(calls, "eval list -n 2\n") {
 			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
 		}
 	})

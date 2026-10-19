@@ -45,10 +45,31 @@ fi
 echo "pins:"
 echo "hrn version:"
 hrn version
+# hrn looks in known install folders after PATH (codex's own on Windows), so a
+# backend missing from PATH is pinned from the path hrn backends prints for it,
+# on a line "  ✓ <name> <state>: <path>". A plain assignment, so a failing hrn
+# stops the run.
+listed=0
 for backend in claude codex; do
+	bin= from=
 	if command -v "$backend" >/dev/null 2>&1; then
-		echo "$backend version:"
-		"$backend" --version || echo "$backend: version unavailable"
+		bin=$backend
+	else
+		if [ "$listed" = 0 ]; then
+			backends=$(hrn backends)
+			listed=1
+		fi
+		while read -r mark name rest; do
+			if [ "$mark" = ✓ ] && [ "$name" = "$backend" ]; then
+				bin=${rest#*: }
+				bin=${bin%$'\r'}
+				from=" (hrn backends: $bin)"
+			fi
+		done <<<"$backends"
+	fi
+	if [ -n "$bin" ]; then
+		echo "$backend version$from:"
+		"$bin" --version || echo "$backend: version unavailable"
 	else
 		echo "$backend: (not installed)"
 	fi
