@@ -42,6 +42,11 @@ type runAllCase struct {
 	// ignoredByRepo commits a .gitignore holding .hrn/ and leaves a file
 	// under .hrn/, as an eval does.
 	ignoredByRepo bool
+	// apiSuite commits suites/local/api.json, whose variant runs the api backend.
+	apiSuite bool
+	// baseURL is ANTHROPIC_BASE_URL for the run; the sandbox drops the user's.
+	baseURL string
+	args    []string // arguments to run-all.sh
 }
 
 func (c runAllCase) markedFile() string {
@@ -113,7 +118,7 @@ func TestRunAll(t *testing.T) {
 	sandboxEnv := func(t *testing.T) []string {
 		var env []string
 		for _, kv := range os.Environ() {
-			if !strings.HasPrefix(strings.ToUpper(kv), "GIT_") {
+			if up := strings.ToUpper(kv); !strings.HasPrefix(up, "GIT_") && !strings.HasPrefix(up, "ANTHROPIC_") {
 				env = append(env, kv)
 			}
 		}
@@ -174,6 +179,12 @@ func TestRunAll(t *testing.T) {
 		}
 		write("suites/golden/a.json", "{}\n")
 		write("suites/golden/b.json", "{}\n")
+		if c.apiSuite {
+			write("suites/local/api.json", `{"matrix": [{"name": "local", "backend": "api", "model": "m"}]}`+"\n")
+		}
+		if c.baseURL != "" {
+			env = append(env, "ANTHROPIC_BASE_URL="+c.baseURL)
+		}
 		if c.ignoredByRepo {
 			write(".gitignore", ".hrn/\n")
 		}
@@ -280,7 +291,11 @@ fi
 			write("fixtures/new.txt", "new\n")
 		}
 		// Set PATH inside bash to avoid Windows PATH conversion and exclude host CLIs.
-		cmd := exec.Command(bash, "--noprofile", "--norc", "-c", "PATH=\"$PWD/bin\"; export PATH; exec "+quote(paths["bash"])+" scripts/run-all.sh")
+		args := ""
+		for _, a := range c.args {
+			args += " " + quote(a)
+		}
+		cmd := exec.Command(bash, "--noprofile", "--norc", "-c", "PATH=\"$PWD/bin\"; export PATH; exec "+quote(paths["bash"])+" scripts/run-all.sh"+args)
 		cmd.Dir = root
 		cmd.Env = env
 		out, err := cmd.CombinedOutput()
@@ -317,6 +332,34 @@ fi
 			t.Errorf("calls = %q, want %q", calls, want)
 		}
 	})
+	// The api backend bills per token unless it points at a local server.
+	t.Run("api suite left out of the default run", func(t *testing.T) {
+		needHash(t)
+		out, calls, code, _ := run(t, runAllCase{apiSuite: true, baseURL: "http://127.0.0.1:8081"})
+		if code != 0 || !strings.Contains(out, "run-all: leaving out suites/local/api.json") {
+			t.Fatalf("exit %d:\n%s", code, out)
+		}
+		if want := "version\neval suites/golden/a.json\neval suites/golden/b.json\neval list -n 2\n"; calls != want {
+			t.Errorf("calls = %q, want %q", calls, want)
+		}
+	})
+	for _, base := range []string{"", "https://api.anthropic.com", "http://127.0.0.1:8081@api.anthropic.com", "http://127.0.0.1.example.com:8081", "http://localhost:8081/../x"} {
+		t.Run("named api suite refused with base "+base, func(t *testing.T) {
+			out, calls, code, _ := run(t, runAllCase{apiSuite: true, baseURL: base, args: []string{"suites/local/api.json"}})
+			if code != 1 || calls != "" || !strings.Contains(out, "run-all: suites/local/api.json runs the api backend, which bills per token") {
+				t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+			}
+		})
+	}
+	for _, base := range []string{"http://127.0.0.1:8081", "http://localhost:8081/", "http://[::1]:8081"} {
+		t.Run("named api suite runs against "+base, func(t *testing.T) {
+			needHash(t)
+			out, calls, code, _ := run(t, runAllCase{apiSuite: true, baseURL: base, args: []string{"suites/local/api.json"}})
+			if want := "version\neval suites/local/api.json\neval list -n 1\n"; code != 0 || calls != want {
+				t.Fatalf("exit %d, calls %q, want %q:\n%s", code, calls, want, out)
+			}
+		})
+	}
 	// hrn runs codex from outside PATH; the pin is that binary's version.
 	t.Run("codex only where hrn finds it", func(t *testing.T) {
 		needHash(t)

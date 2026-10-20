@@ -37,9 +37,33 @@ if [ ${#flagged[@]} -gt 0 ]; then
 	exit 1
 fi
 
+# The api backend bills per token unless ANTHROPIC_BASE_URL points at a local
+# server, so a run with no arguments leaves api suites out and a named one needs
+# a loopback address (no userinfo, so http://127.0.0.1:1@host cannot pass).
+# In bash itself: an outside tool that is missing would make the check pass.
+api_variant='"backend"[[:space:]]*:[[:space:]]*"api"'
+uses_api() {
+	local spec
+	spec=$(<"$1") || exit 1
+	[[ $spec =~ $api_variant ]]
+}
+local_api() { [[ ${ANTHROPIC_BASE_URL:-} =~ ^http://(127[.]0[.]0[.]1|localhost|[[]::1[]]):[0-9]+/?$ ]]; }
 suites=("$@")
 if [ ${#suites[@]} -eq 0 ]; then
-	suites=(suites/*/*.json)
+	for s in suites/*/*.json; do
+		if uses_api "$s"; then
+			echo "run-all: leaving out $s: it runs the api backend; name it to run it against a local server" >&2
+		else
+			suites+=("$s")
+		fi
+	done
+else
+	for s in "${suites[@]}"; do
+		if uses_api "$s" && ! local_api; then
+			echo "run-all: $s runs the api backend, which bills per token unless ANTHROPIC_BASE_URL is a loopback address such as http://127.0.0.1:8081; point it at the local server first" >&2
+			exit 1
+		fi
+	done
 fi
 
 echo "pins:"
