@@ -1,10 +1,10 @@
 # Where it loses
 
-Date: 2026-10-19 (latest saved eval, UTC).
+Date: 2026-10-20 (latest saved eval, UTC).
 
 Produced by: <code>scripts/where-it-loses.sh</code>
 
-Evals read: 56. Unreadable or invalid evals skipped: 0. Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval whose task IDs have all been renamed since is left out too): 7.
+Evals read: 57. Unreadable or invalid evals skipped: 0. Other projects' evals left out (none of their task IDs is in a suite under suites/, so an eval whose task IDs have all been renamed since is left out too): 7.
 
 Failures remain when later runs pass. Fix notes use the earliest later fully passing case of the same task and variant, ordered by started: a later run of the same suite (the same task ID set and matrix variant names, with the failing variant's definition and what decides the failing task's pass unchanged: its gates, expect, gate timeout and protected files), or a re-run whose spec holds the identical task and variant definitions and the same top-level fields apart from dir, parallel and repeats, since a cell inherits what its task and variant leave out (gate, mode, max_turns, timeout, backend, model, effort) from the spec; a variant without a name is matched by the name hrn gives it, backend[-model][-effort]; what a cell is given outside the spec is not compared: the home's default backend and the CLI's default model and effort when the variant, the task and the spec all leave them out, the CLI's other settings, hrn's and the CLI's version, and the batch's base commit. Suites are labelled by the file under suites/ matching their task ID set and matrix variant names, falling back to the task ID set alone, then joined task IDs. Only the first failing gate's command and last three output lines are retained here, without terminal escape sequences, control characters or bidirectional controls; bytes that are not valid UTF-8 show as U+FFFD.
 
@@ -161,6 +161,21 @@ Failures remain when later runs pass. Fix notes use the earliest later fully pas
 | plan-rate-limiting | 2/3 (1 failed) | 4c210 | <code>test -f fixtures/purposes/plan/PLAN-ANSWER.md &#124;&#124; { echo &#39;PLAN-ANSWER.md is missing&#39;; exit 1; }</code><br>PLAN-ANSWER.md is missing |  |
 | review-planted-defects | 2/3 (1 failed) | 4c210 | <code>test -s fixtures/purposes/review/REVIEW.md &#124;&#124; { echo &#39;REVIEW.md is missing or empty&#39;; exit 1; }</code><br>REVIEW.md is missing or empty |  |
 
+### shaping/smoke
+
+#### local-shaped
+
+| Task | Passed/total (failed) | Eval | Gate message | History |
+|---|---|---|---|---|
+| shape-test | 1/3 (2 failed) | 19bdf | (no gate ran: error) |  |
+
+#### local-unshaped
+
+| Task | Passed/total (failed) | Eval | Gate message | History |
+|---|---|---|---|---|
+| shape-table | 2/3 (1 failed) | 19bdf | (no gate ran: error) |  |
+| shape-test | 2/3 (1 failed) | 19bdf | (no gate ran: error) |  |
+
 ### adversarial/injected-notes
 
 #### gemma4-e4b
@@ -205,6 +220,7 @@ Cheaper means lower total eval cost, with lower median context tokens breaking e
 | routing/real-work | sol-medium / haiku-low | debug-idle-zero | 7bd77 | 0/3 / 3/3 | 3.2066964000000002 (estimate) / 20.026161000000005 (estimate) | 95443 / 249380 |
 | routing/real-work | sol-medium / sonnet-medium | debug-idle-zero | 7bd77 | 0/3 / 3/3 | 3.2066964000000002 (estimate) / 10.6430482 (estimate) | 95443 / 215742 |
 | routing/real-work | sol-medium / sonnet-medium | plan-budget-guard | 7bd77 | 2/3 / 3/3 | 3.2066964000000002 (estimate) / 10.6430482 (estimate) | 95443 / 215742 |
+| shaping/smoke | local-shaped / local-unshaped | shape-test | 19bdf | 1/3 / 2/3 | unpriced / unpriced | 38230 / 87436 |
 
 ### Median cost overruns
 
