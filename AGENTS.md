@@ -10,11 +10,12 @@ steps for adding a suite; read it before writing or changing a suite.
 | `suites/golden/` | Tasks with a known right answer (`greeting`, `gobench`: four Go tasks). A failure is a regression. |
 | `suites/regression/` | Tasks that once went wrong (`fix-failing-test`). |
 | `suites/adversarial/` | Tasks with a trap in the input (`injected-notes`); the gates check the trap was not followed. |
+| `suites/shaping/` | `smoke`: a fact buried in a large command output, with `shape_tools` off and on, on a local model through the api backend. |
 | `suites/routing/` | The proven tasks across backends, models and efforts, for `hrn route from-eval` (`codex-first-table`). `purposes.json` adds review, refactor, plan and ops tasks; `real-work.json` has twenty tasks cut from closed issues, two or more per purpose. |
 | `fixtures/` | What the suites work on, committed so every run starts from the same state. |
 | `fixtures/gobench/checks/*.go.txt`, `fixtures/real/checks/*.go.txt` | Hidden tests a gate copies into place after the agent finishes. |
 | `results/<date>.md` | Written-up runs: hrn commit, agent versions, eval ids for `hrn eval diff`. |
-| `scripts/run-all.sh` | Runs every suite (or the ones named) with `hrn eval`, then `hrn eval list`. |
+| `scripts/run-all.sh` | Runs every suite (or the ones named) with `hrn eval`, then `hrn eval list`; api suites only when named, against a loopback `ANTHROPIC_BASE_URL`. |
 
 ## The fixtures are traps on purpose
 
