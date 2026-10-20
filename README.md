@@ -14,7 +14,7 @@ regression gets caught instead of noticed later.
 | `suites/regression/` | Tasks that once went wrong, kept so they stay fixed. |
 | `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. |
 | `suites/shaping/` | `smoke.json` asks for one fact buried in a large command output, one task per shape hrn's `shape_tools` summarises (Go test, log, JSON, table, terminal) and one small output with nothing to shape, on the api backend with shaping off and on. It runs on a local model (`fixtures/shaping/emit` prints the outputs), never the paid API. |
-| `suites/routing/` | The tasks the other suites prove, run across backends, models and efforts so `hrn route from-eval` can build the routing table: `codex-first-table.json` (codex only), `main-and-cheap-tier.json` (Sol, Sonnet, Luna and Haiku, three repetitions), `purposes.json` (review, refactor, plan and ops tasks) and `real-work.json` (twenty tasks cut from this repository's and harness's closed issues, frozen under `fixtures/real/` with the merged fix's tests as hidden checks). Each run is written up under `results/`. The runs before 2026-10-19 ran `haiku-low` as Haiku 4.5; the suites now name `claude-haiku-5-5` under the same variant name, so `hrn eval diff` across that change pairs the two models, and each results page names the model it ran. |
+| `suites/routing/` | The tasks the other suites prove, run across backends, models and efforts so `hrn route from-eval` can build the routing table: `codex-first-table.json` (codex only), `main-and-cheap-tier.json` (Sol, Sonnet, Luna and Haiku, three repetitions), `purposes.json` (review, refactor, plan and ops tasks) and `real-work.json` (twenty tasks cut from this repository's and harness's closed issues, two or more per purpose, frozen under `fixtures/real/` before the fix with the merged fix's tests as hidden checks). Each run is written up under `results/`. The runs before 2026-10-19 ran `haiku-low` as Haiku 4.5, which Claude Code 2.1.284's `haiku` alias still picks; the suites now name `claude-haiku-5-5` under the same variant name, so `hrn eval diff` across that change pairs the two models, `results/where-it-loses.md` does not count a pass after it as a fix, and each results page names the model it ran. |
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
 | `scripts/run-all.sh` | Runs every suite, or the ones named, then lists the saved evals. A run with no arguments leaves out suites on the api backend; a named one runs only when `ANTHROPIC_BASE_URL` is a loopback address, so it cannot bill per token. |
 | `results/` | The results pages. Every page from now on meets [the publication gate](docs/publication-gate.md), the rule for when a saving or quality claim may be made. |
@@ -29,21 +29,23 @@ worktree.
 
 - **hrn**, from [harness](https://github.com/cristiangirlea/harness). It has no tagged release yet,
   so install it from a commit: `go install github.com/cristiangirlea/harness/cmd/hrn@<commit>`.
-  Every results page names the harness commit it ran on; a suite may need a newer hrn than an
-  older page names.
+  Every run's results page names the harness commit it ran on; a suite may need a newer hrn than
+  an older page names.
 - **Claude Code and the Codex CLI**, logged in, for the suites that run them. Their cells run on
   your own plans.
 - **Go 1.26**, **bash** (Git Bash on Windows: the gates and `run-all.sh` run in it) and
   **Node.js** for the suite lint.
-- For `suites/shaping/` only: a local model behind an Anthropic-compatible endpoint on a loopback
-  port, such as llama.cpp's server as [inference](https://github.com/cristiangirlea/inference)
-  runs it, and the api backend enabled with `hrn backends set`.
+- For `suites/shaping/` only: a local server on a loopback port that answers the Anthropic
+  Messages API (`/v1/messages`), such as a recent llama.cpp `llama-server`; the `scripts/serve.sh`
+  of [inference](https://github.com/cristiangirlea/inference) starts one on 127.0.0.1:8081. hrn's
+  api backend must be enabled, which it is unless `hrn backends set` left it out; `--only`
+  replaces the whole list, so name api together with the backends you keep.
 
 ## Running
 
 ```bash
 scripts/run-all.sh                                   # every suite but the api ones
-ANTHROPIC_BASE_URL=http://127.0.0.1:8081 ANTHROPIC_AUTH_TOKEN=local \
+env -u ANTHROPIC_API_KEY ANTHROPIC_BASE_URL=http://127.0.0.1:8081 ANTHROPIC_AUTH_TOKEN=local \
   scripts/run-all.sh suites/shaping/smoke.json       # the local-model suite, by name
 scripts/run-all.sh suites/adversarial/*.json         # one kind
 hrn eval diff <earlier-id> <later-id>                # what changed between two runs
@@ -51,8 +53,10 @@ hrn eval diff <earlier-id> <later-id>                # what changed between two 
 
 Records go to `~/.hrn/evals`, as for any `hrn eval`. The golden, regression and adversarial
 suites compare Claude Code (Sonnet) with Codex, the two agents in daily use; the routing suites
-compare backends, models and efforts; the shaping suite runs the api backend on a local model,
-and its token stands in for a key the local server does not check.
+compare backends, models and efforts; the shaping suite runs the api backend on a local model.
+hrn sends `ANTHROPIC_API_KEY` in place of the token whenever it is set, so the command unsets
+it: a real key would otherwise go to the local server, and the stand-in token is enough for one
+that checks none.
 
 ## Adding a suite
 
