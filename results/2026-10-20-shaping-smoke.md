@@ -8,7 +8,7 @@ ran on a local model at no cost while the real comparison on Claude and Codex wa
 harness #435. Every number on this page is **measured** on this run unless marked otherwise.
 
 **It answers only that question.** A local model with 32k of context favours shaping, since an
-unshaped 30 KB result fills most of that context and two of them overflow it; the token figures
+unshaped 30 KB result fills up to most of that context and two of them overflow it; the token figures
 below are therefore not a forecast for Claude or Codex, whose contexts are far larger, and they
 cannot decide whether shaping goes on by default.
 
@@ -42,13 +42,15 @@ summary left the fact out (JSON, table, terminal), all nine shaped cells still f
 re-ran the command and filtered it with `grep`, or saved it to a file and searched that. No
 cell in either arm ever called `read_original`.
 
-Faced with a summary that lacked the fact, six shaped cells also opened files the task did not
-point them to, which no unshaped cell did. Five read the emitter's source,
+Seven shaped cells and one unshaped cell also opened files the task did not point them to.
+Three of them (two shaped, one unshaped) read `README.md`, which holds no answers. Five shaped
+cells read the emitter's source,
 `fixtures/shaping/emit/main.go`, which computes the facts and does not hold them; one of those
 (terminal, r3) worked the digest out from the source, then confirmed it with `grep` on the
 command's output before writing it. One (table, r3) read `suites/shaping/smoke.json`, whose
 gates hold the expected answers, but only after its second call had already printed the row
-it answered from. In all six the written answer had appeared in a command's output first, so
+it answered from. In all seven shaped cells the written answer had appeared in a command's
+output first, so
 none of the passes rests on the suite file; the gates live beside the tasks in every suite of
 this repository, and an agent that goes looking can read them.
 
@@ -56,29 +58,32 @@ The four failures, none of them a shaped summary losing an answer:
 
 - `shape-test`, unshaped, r2 (`20261020-100119-40cc2f`): after 7 turns and two cut results,
   the next request was 32,918 tokens and the server refused it (`exceed_context_size_error`).
-- `shape-table`, unshaped, r2 (`20261020-103840-865be5`): the same overflow after 8 turns, at
-  33,919 tokens.
+- `shape-table`, unshaped, r2 (`20261020-103840-865be5`): after 8 turns, one cut result of
+  about 27,000 tokens and a read of `README.md`, the request was 33,919 tokens.
 - `shape-test`, shaped, r2 (`20261020-101050-13f6a4`): after one command the model wrote until
-  it hit its output limit (15,690 output tokens). This task's output is not summarised, so the
+  it hit its output limit (15,539 output tokens in that answer, 15,690 for the cell). This task's output is not summarised, so the
   shaped arm saw the same cut as the unshaped one plus a handle.
 - `shape-test`, shaped, r3 (`20261020-102122-016951`): the agent saved the output to a file and
-  read the 109 KB file whole with `read_file`, which hrn does not shape, and overflowed at 33,230
-  tokens.
+  read it back with `read_file`, which hrn does not shape but cuts to 30,000 bytes like an
+  unshaped result; that second cut on top of the first overflowed at 33,230 tokens.
 
 ## What the summarizer did
 
 - **Go test:** the summary is refused, so `shape_tools` falls back to the plain cut with a
   handle. The summary hrn builds opens `tests: passed=1499 failed=2` (the failed count includes
   the parent test), and its validity check refuses it: `2` never appears in the output as a
-  number token, and with the count corrected some further check still refuses it. Plain
-  `go test -v` output therefore never gets shaped. Filed as harness #619.
+  number token; the counts line must also equal the counts recomputed from the output, so a
+  hand-corrected `failed=1` is refused too. Verbose `go test` output with a failing subtest is
+  therefore refused whenever its failed count, parents included, does not appear in it as a
+  number; this run's never got shaped. Filed as harness #619.
 - **Log:** summarised to 487 bytes, keeping the error line; the shaped agents answered in 3 to 5
-  turns with a peak context of about 4,000 tokens, against about 18,800 unshaped.
+  turns with a peak context of about 4,200 tokens, against about 18,800 unshaped.
 - **JSON and table:** summarised to under 300 bytes without the fact, as designed; the agents
   went back to the command, in 6 to 12 turns.
 - **Terminal:** summarised to 26,968 bytes, the head and tail of the output, which is nearly
-  the size of the plain cut; the shaped agents then re-ran the command several times and used
-  more tokens than the unshaped ones. Also in harness #619.
+  the size of the plain cut. The shaped agents then read the emitter's source and took 9 to
+  11 turns against 5 unshaped, carrying that summary through each request, so they used more
+  tokens than the unshaped ones. Also in harness #619.
 
 ## Tokens
 
@@ -104,7 +109,7 @@ Median per cell of input, output and cache read summed, by task:
 
 The `shape-test` medians compare cells that failed early in the shaped arm with cells that
 finished in the unshaped one, and the shaped arm's output total holds one runaway answer of
-15,690 tokens. These figures are reported as measured, not as a saving: see rule 5 below.
+15,539 tokens. These figures are reported as measured, not as a saving: see rule 5 below.
 
 ## Against the publication gate
 
