@@ -360,6 +360,29 @@ fi
 			}
 		})
 	}
+	// The guard refuses only api suites, checks every named suite before any
+	// eval, and stops on a suite it cannot read.
+	for _, base := range []string{"", "https://api.anthropic.com"} {
+		t.Run("named plain suite runs with base "+base, func(t *testing.T) {
+			needHash(t)
+			out, calls, code, _ := run(t, runAllCase{apiSuite: true, baseURL: base, args: []string{"suites/golden/a.json"}})
+			if want := "version\neval suites/golden/a.json\neval list -n 1\n"; code != 0 || calls != want {
+				t.Fatalf("exit %d, calls %q, want %q:\n%s", code, calls, want, out)
+			}
+		})
+	}
+	t.Run("plain suite before a refused api suite", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{apiSuite: true, baseURL: "https://api.anthropic.com", args: []string{"suites/golden/a.json", "suites/local/api.json"}})
+		if code != 1 || calls != "" {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
+	t.Run("named suite that does not exist", func(t *testing.T) {
+		out, calls, code, _ := run(t, runAllCase{args: []string{"suites/golden/missing.json"}})
+		if code != 1 || calls != "" {
+			t.Fatalf("exit %d, calls %q:\n%s", code, calls, out)
+		}
+	})
 	// hrn runs codex from outside PATH; the pin is that binary's version.
 	t.Run("codex only where hrn finds it", func(t *testing.T) {
 		needHash(t)

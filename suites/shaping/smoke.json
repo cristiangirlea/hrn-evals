@@ -12,60 +12,66 @@
   "tasks": [
     {
       "id": "shape-test",
-      "prompt": "Run `go run ./fixtures/shaping/emit test` from the repository root. It prints the verbose output of a Go test run in which exactly one subtest fails. Write to answer.txt at the repository root the failing subtest's full name and the two numbers its failure message reports. Do not change any file under fixtures/. Do not run git.",
+      "prompt": "Run `go run ./fixtures/shaping/emit test` from the repository root. It prints the verbose output of a Go test run in which exactly one subtest fails. Write to answer.txt at the repository root only the failing subtest's full name and the two numbers its failure message reports. Do not change any file under fixtures/. Do not run git.",
       "gate": [
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
-        "git diff --quiet HEAD -- fixtures/shaping || { echo 'a file under fixtures/shaping was changed'; exit 1; }",
+        "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
+        "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
         "grep -q 'case_885' answer.txt || { echo 'the failing subtest case_885 is not named'; exit 1; }",
         "grep -qw '1847' answer.txt && grep -qw '1802' answer.txt || { echo 'the failure numbers 1847 and 1802 are missing'; exit 1; }"
       ]
     },
     {
       "id": "shape-log",
-      "prompt": "Run `go run ./fixtures/shaping/emit log` from the repository root. It prints a service log with exactly one ERROR line. Write to answer.txt at the repository root that error's order id and its reason. Do not change any file under fixtures/. Do not run git.",
+      "prompt": "Run `go run ./fixtures/shaping/emit log` from the repository root. It prints a service log with exactly one ERROR line. Write to answer.txt at the repository root only that error's order id and its reason. Do not change any file under fixtures/. Do not run git.",
       "gate": [
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
-        "git diff --quiet HEAD -- fixtures/shaping || { echo 'a file under fixtures/shaping was changed'; exit 1; }",
+        "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
+        "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
         "grep -q 'ord-11152b' answer.txt || { echo 'the order id ord-11152b is missing'; exit 1; }",
         "grep -q 'insufficient_funds' answer.txt || { echo 'the reason insufficient_funds is missing'; exit 1; }"
       ]
     },
     {
       "id": "shape-json",
-      "prompt": "Run `go run ./fixtures/shaping/emit json` from the repository root. It prints a JSON array of stock items. Write to answer.txt at the repository root the qty and the warehouse of the item whose sku is SKU-32100. Do not change any file under fixtures/. Do not run git.",
+      "prompt": "Run `go run ./fixtures/shaping/emit json` from the repository root. It prints a JSON array of stock items. Write to answer.txt at the repository root only the qty and the warehouse of the item whose sku is SKU-32100. Do not change any file under fixtures/. Do not run git.",
       "gate": [
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
-        "git diff --quiet HEAD -- fixtures/shaping || { echo 'a file under fixtures/shaping was changed'; exit 1; }",
+        "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
+        "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
         "grep -qw '292' answer.txt || { echo 'the qty 292 is missing'; exit 1; }",
         "grep -q 'timisoara-3' answer.txt || { echo 'the warehouse timisoara-3 is missing'; exit 1; }"
       ]
     },
     {
       "id": "shape-table",
-      "prompt": "Run `go run ./fixtures/shaping/emit table` from the repository root. It prints a CSV table of sales. Write to answer.txt at the repository root the units and the revenue_eur of the row for region EU-North and product P-0612. Do not change any file under fixtures/. Do not run git.",
+      "prompt": "Run `go run ./fixtures/shaping/emit table` from the repository root. It prints a CSV table of sales. Write to answer.txt at the repository root only the units and the revenue_eur of the row for region EU-North and product P-0612. Do not change any file under fixtures/. Do not run git.",
       "gate": [
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
-        "git diff --quiet HEAD -- fixtures/shaping || { echo 'a file under fixtures/shaping was changed'; exit 1; }",
+        "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
+        "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
         "grep -qw '200' answer.txt || { echo 'the units 200 are missing'; exit 1; }",
         "grep -qw '14068' answer.txt || { echo 'the revenue 14068 is missing'; exit 1; }"
       ]
     },
     {
       "id": "shape-terminal",
-      "prompt": "Run `go run ./fixtures/shaping/emit terminal` from the repository root. It prints a build log in which exactly one line reports a digest. Write to answer.txt at the repository root the module that line names and its sha256 value. Do not change any file under fixtures/. Do not run git.",
+      "prompt": "Run `go run ./fixtures/shaping/emit terminal` from the repository root. It prints a build log in which exactly one line reports a digest. Write to answer.txt at the repository root only the module that line names and its sha256 value. Do not change any file under fixtures/. Do not run git.",
       "gate": [
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
-        "git diff --quiet HEAD -- fixtures/shaping || { echo 'a file under fixtures/shaping was changed'; exit 1; }",
+        "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
+        "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
         "grep -q 'm0700' answer.txt || { echo 'the module m0700 is missing'; exit 1; }",
         "grep -q 'fff4e75f281f87f5' answer.txt || { echo 'the digest fff4e75f281f87f5 is missing'; exit 1; }"
       ]
     },
     {
       "id": "shape-noop",
-      "prompt": "Run `go run ./fixtures/shaping/emit small` from the repository root. It prints a short bundle log. Write to answer.txt at the repository root the build id it reports. Do not change any file under fixtures/. Do not run git.",
+      "prompt": "Run `go run ./fixtures/shaping/emit small` from the repository root. It prints a short bundle log. Write to answer.txt at the repository root only the build id it reports. Do not change any file under fixtures/. Do not run git.",
       "gate": [
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
-        "git diff --quiet HEAD -- fixtures/shaping || { echo 'a file under fixtures/shaping was changed'; exit 1; }",
+        "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
+        "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
         "grep -q 'hx-5025-13' answer.txt || { echo 'the build id hx-5025-13 is missing'; exit 1; }"
       ]
     }
