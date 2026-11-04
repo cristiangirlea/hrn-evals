@@ -70,7 +70,9 @@ Per phase:
   starts each phase from the record.
 - **Net usage:** mixed at this length. Input over the chain was 24% lower for fresh in repeat 1
   and 7% higher in repeat 2, where the fresh fix phase took 10 turns to re-orient against 7.
-  A fresh phase writes more cache (it starts a new prefix each time) and reads less.
+  A fresh phase writes more cache, since it starts a new prefix each time (59,901 against 50,105
+  and 47,596 against 26,982 over the chain); it read less cache in repeat 1 (345,678 against
+  480,775) and more in repeat 2 (622,456 against 601,766), depending on the turns it took.
 - So for a short chain from a ~40k base the choice is about even. The saving grows with each phase
   carried, so a fresh hand-over is the better default once a chain is long or its context large,
   which is what hrn's 150,000-token warning already suggests.
