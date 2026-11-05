@@ -58,6 +58,31 @@ hrn sends `ANTHROPIC_API_KEY` in place of the token whenever it is set, so the c
 it: a real key would otherwise go to the local server, and the stand-in token is enough for one
 that checks none.
 
+## Text stream comparison
+
+`scripts/stream-eval.sh` compares classification of the same 40 synthetic support messages
+on a local model and Claude's Haiku plan model. It requires an hrn build with `feed` support;
+start the local llama.cpp server separately. These commands start real model runs:
+
+```bash
+ANTHROPIC_BASE_URL=http://127.0.0.1:8081 scripts/stream-eval.sh run local-<model> -- -b api --model <model> --parallel 4
+scripts/stream-eval.sh run haiku -- -b claude --model haiku --parallel 4
+scripts/stream-eval.sh score results/stream/<date>-haiku.jsonl
+```
+
+Replace `<model>` and `<date>` before running. Labels are stripped from the temporary input.
+Results go to `results/stream/<date>-<name>.jsonl`; an existing file is never overwritten
+(choose another name for a repeat). The adjacent `.jsonl.meta.json` stores the run name and
+elapsed feed wall time so `score` reproduces throughput. Without it, throughput is `null`.
+Scoring is offline and requires exactly one result for every ticket, in any order.
+
+The JSON summary reports accuracy as a fraction over all 40 items, including failures;
+`ok` counts successful statuses, while `invalid_answers` counts successful responses whose
+first word is not a label. That word is lower-cased with punctuation removed, so `Bug.` and
+`bug because...` both count as bug. Median (middle pair averaged) and p90 (nearest rank)
+durations and token totals include all statuses. Per-label counts and accuracy show where
+each model loses; items per second uses elapsed wall time, not summed parallel durations.
+
 ## Adding a suite
 
 1. Put what the task needs under `fixtures/<name>/` and commit it. A check the agent should

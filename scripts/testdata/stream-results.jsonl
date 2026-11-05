@@ -1,0 +1,7 @@
+{"id":"g","status":"timeout","output":"question","duration_ms":70,"input_tokens":7,"output_tokens":1,"error":"deadline exceeded"}
+{"id":"a","status":"ok","output":"bug","duration_ms":10,"input_tokens":1,"output_tokens":1}
+{"id":"b","status":"ok","output":"feature","duration_ms":20,"input_tokens":2,"output_tokens":1}
+{"id":"c","status":"ok","output":"**FEATURE!**","duration_ms":30,"input_tokens":3,"output_tokens":1}
+{"id":"d","status":"ok","output":"Question extra words","duration_ms":40,"input_tokens":4,"output_tokens":1}
+{"id":"e","status":"ok","output":"unsure","duration_ms":50,"input_tokens":5,"output_tokens":1}
+{"id":"f","status":"error","output":"billing","duration_ms":60,"input_tokens":6,"output_tokens":1,"error":"backend failed"}

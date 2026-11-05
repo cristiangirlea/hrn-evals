@@ -1,0 +1,40 @@
+{"id":"t01","text":"The app closes every time I open a saved draft. It worked yesterday.","label":"bug"}
+{"id":"t02","text":"Why was I charged twice for this month's subscription?","label":"billing"}
+{"id":"t03","text":"Please add a dark theme for reading at night.","label":"feature"}
+{"id":"t04","text":"How do I change the language used in the menus?","label":"question"}
+{"id":"t05","text":"Could you explain why pressing Save erases everything I just typed?","label":"bug"}
+{"id":"t06","text":"Where can I download the invoice for last month's payment?","label":"billing"}
+{"id":"t07","text":"I would like an option to schedule a message for tomorrow morning.","label":"feature"}
+{"id":"t08","text":"Where is the setting for turning off desktop notifications?","label":"question"}
+{"id":"t09","text":"Search returns an empty page even when I paste the exact title of an existing note.","label":"bug"}
+{"id":"t10","text":"I cancelled last week but another renewal charge appeared today. Please refund it.","label":"billing"}
+{"id":"t11","text":"Could the app support exporting calendars in a printable monthly layout?","label":"feature"}
+{"id":"t12","text":"Can I move a saved note into a different folder? I cannot find the instructions.","label":"question"}
+{"id":"t13","text":"The progress bar stays at zero after an upload completes, and never updates.","label":"bug"}
+{"id":"t14","text":"Does the annual subscription cost less than paying each month?","label":"billing"}
+{"id":"t15","text":"Please let us attach voice recordings to notes. Text alone is not enough for my workflow.","label":"feature"}
+{"id":"t16","text":"What does the small lock icon beside a folder mean?","label":"question"}
+{"id":"t17","text":"Why does the total show twelve items when the list contains only three? Refreshing does not help.","label":"bug"}
+{"id":"t18","text":"My card expired and the renewal payment was declined. How can I pay the outstanding amount?","label":"billing"}
+{"id":"t19","text":"It would be useful to have custom keyboard shortcuts instead of only the fixed ones.","label":"feature"}
+{"id":"t20","text":"How can I restore a note from the trash?","label":"question"}
+{"id":"t21","text":"Dragging a task to another column creates two copies instead of moving it.","label":"bug"}
+{"id":"t22","text":"Please update the tax amount on my latest invoice. The amount charged does not match the receipt.","label":"billing"}
+{"id":"t23","text":"Can you add recurring reminders? Currently I must create a new reminder every week.","label":"feature"}
+{"id":"t24","text":"Is there a way to sort existing folders alphabetically?","label":"question"}
+{"id":"t25","text":"The password reset button leads to a blank screen every time, on two different browsers.","label":"bug"}
+{"id":"t26","text":"How much would it cost to add two more seats to my subscription?","label":"billing"}
+{"id":"t27","text":"Please add support for working offline and syncing changes later.","label":"feature"}
+{"id":"t28","text":"How do I invite another person to a shared folder?","label":"question"}
+{"id":"t29","text":"Can you help with the timer resetting itself to zero whenever I switch tabs? It should keep running.","label":"bug"}
+{"id":"t30","text":"I paid for the yearly plan but my receipt lists the monthly rate. Please correct the receipt.","label":"billing"}
+{"id":"t31","text":"I want to compare two revisions side by side. Could you build a comparison view?","label":"feature"}
+{"id":"t32","text":"What is the maximum attachment size allowed for an existing note?","label":"question"}
+{"id":"t33","text":"The latest update renders all accented characters as empty squares in saved documents.","label":"bug"}
+{"id":"t34","text":"Can the unused portion of my prepaid subscription be refunded if I close my account?","label":"billing"}
+{"id":"t35","text":"Please offer a read-aloud option for long documents.","label":"feature"}
+{"id":"t36","text":"How do I sign out of all my other devices?","label":"question"}
+{"id":"t37","text":"The volume slider jumps back to full volume immediately after I lower it.","label":"bug"}
+{"id":"t38","text":"I need to replace the payment card used for my next renewal. Where do I do that?","label":"billing"}
+{"id":"t39","text":"Could we get a way to tag several notes at once? Today tags can only be applied individually.","label":"feature"}
+{"id":"t40","text":"Where can I see the list of devices currently signed in to my account?","label":"question"}
