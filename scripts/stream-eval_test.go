@@ -151,6 +151,7 @@ func main() {
  if len(args)!=13 || args[0]!="feed" || args[1]!="--task-file" || args[2]!="fixtures/stream/task.md" || args[3]!="--in" || args[5]!="--out" || args[7]!="-b" || args[8]!="claude" || args[9]!="--model" || args[10]!="haiku" || args[11]!="--parallel" || args[12]!="4" { panic(fmt.Sprint(args)) }
  in, err := os.Open(args[4]); if err!=nil { panic(err) }; defer in.Close()
  out, err := os.Create(args[6]); if err!=nil { panic(err) }; defer out.Close()
+ if os.Getenv("STREAM_STUB_FAIL") == "partial" { out.WriteString("partial result\n"); out.Close(); os.Exit(7) }
  dec, enc := json.NewDecoder(in), json.NewEncoder(out)
  for dec.More() {
   var item map[string]string; if err:=dec.Decode(&item); err!=nil { panic(err) }
@@ -239,9 +240,46 @@ func main() {
 	if err := streamEval(args, &rescored, &stderr); err == nil || !strings.Contains(err.Error(), "hrn feed failed") {
 		t.Fatalf("lost feed failure: %v", err)
 	}
+	failurePath := filepath.Join("results", "stream", time.Now().Format("2006-01-02")+"-failure.jsonl")
+	if _, err := os.Stat(failurePath); !os.IsNotExist(err) {
+		t.Fatalf("empty failed results remain: %v", err)
+	}
+	t.Setenv("STREAM_STUB_FAIL", "")
+	if err := streamEval(args, &rescored, &stderr); err != nil {
+		t.Fatalf("retry failed: %v", err)
+	}
+	t.Setenv("STREAM_STUB_FAIL", "partial")
+	args[1] = "partial"
+	partialPath := filepath.Join("results", "stream", time.Now().Format("2006-01-02")+"-partial.jsonl")
+	if err := streamEval(args, &rescored, &stderr); err == nil || !strings.Contains(err.Error(), "results at "+partialPath) {
+		t.Fatalf("lost partial results location: %v", err)
+	}
+	if b, err := os.ReadFile(partialPath); err != nil || string(b) != "partial result\n" {
+		t.Fatalf("lost partial results: %q, %v", b, err)
+	}
+	t.Setenv("STREAM_STUB_FAIL", "")
+	t.Run("temporary input failure", func(t *testing.T) {
+		missing := filepath.Join(t.TempDir(), "missing")
+		t.Setenv("TMP", missing)
+		t.Setenv("TEMP", missing)
+		t.Setenv("TMPDIR", missing)
+		args[1] = "temp-failure"
+		if err := streamEval(args, &rescored, &stderr); err == nil {
+			t.Fatal("accepted missing temporary directory")
+		}
+		path := filepath.Join("results", "stream", time.Now().Format("2006-01-02")+"-temp-failure.jsonl")
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("empty results remain after temporary input failure: %v", err)
+		}
+	})
 }
 
 func TestStreamAnswer(t *testing.T) {
+	for _, input := range []string{"`bug`", "<|~$=+BUG+=$~|>"} {
+		if got := streamAnswer(input); got != "bug" {
+			t.Errorf("%q: got %q, want bug", input, got)
+		}
+	}
 	for input, want := range map[string]string{"": "", "  \n": "", "Bug.": "bug", "‘BILLING,’": "billing", "feature please": "feature", "question": "question", "unknown": "unknown"} {
 		if got := streamAnswer(input); got != want {
 			t.Error(fmt.Sprintf("%q: got %q, want %q", input, got, want))

@@ -22,7 +22,7 @@ jobs:
           go-version-file: go.mod
       - run: go build ./... && go vet ./...
       - run: go test -count=1 ./scripts/
-      - run: bash -n scripts/run-all.sh
+      - run: bash -n scripts/run-all.sh scripts/stream-eval.sh scripts/where-it-loses.sh
       - name: suite lint
         run: |
           node -e '

@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -131,7 +133,7 @@ func streamAnswer(output string) string {
 		return ""
 	}
 	return strings.ToLower(strings.Map(func(r rune) rune {
-		if unicode.IsPunct(r) {
+		if unicode.IsPunct(r) || unicode.IsSymbol(r) {
 			return -1
 		}
 		return r
@@ -217,7 +219,7 @@ func scoreStream(path, name string, tickets []streamTicket, wallSeconds float64)
 	return score, nil
 }
 
-func streamEval(args []string, out, stderr io.Writer) error {
+func streamEval(args []string, out, stderr io.Writer) (retErr error) {
 	if len(args) == 0 {
 		return fmt.Errorf("usage: stream-eval.sh run <name> -- <hrn feed args...> | score <results.jsonl>")
 	}
@@ -267,6 +269,22 @@ func streamEval(args []string, out, stderr io.Writer) error {
 		if err != nil {
 			return err
 		}
+		// Handle interruption through the command context so deferred cleanup runs.
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		defer func() {
+			if retErr != nil {
+				if info, err := os.Stat(path); err == nil {
+					if info.Size() == 0 {
+						if err := os.Remove(path); err != nil {
+							retErr = fmt.Errorf("%w; remove empty results: %v", retErr, err)
+						}
+					} else {
+						retErr = fmt.Errorf("%w (results at %s)", retErr, path)
+					}
+				}
+			}
+		}()
 		if err := reserved.Close(); err != nil {
 			return err
 		}
@@ -284,13 +302,13 @@ func streamEval(args []string, out, stderr io.Writer) error {
 			return closeErr
 		}
 		feedArgs := append([]string{"feed", "--task-file", "fixtures/stream/task.md", "--in", input.Name(), "--out", path}, args[3:]...)
-		cmd := exec.Command("hrn", feedArgs...)
+		cmd := exec.CommandContext(ctx, "hrn", feedArgs...)
 		cmd.Stdout, cmd.Stderr = stderr, stderr
 		start := time.Now()
 		err = cmd.Run()
 		meta.WallSeconds = time.Since(start).Seconds()
 		if err != nil {
-			return fmt.Errorf("hrn feed failed (results at %s): %w", path, err)
+			return fmt.Errorf("hrn feed failed: %w", err)
 		}
 		b, err := json.Marshal(meta)
 		if err != nil {
