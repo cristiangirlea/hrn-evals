@@ -8,7 +8,7 @@ this order, stopping at the first failure:
 ```bash
 go build ./... && go vet ./...
 go test -count=1 ./scripts/
-bash -n scripts/run-all.sh
+bash -n scripts/run-all.sh scripts/stream-eval.sh scripts/where-it-loses.sh
 node -e '
 const fs=require("fs"),p=require("path");let bad=0;
 for(const k of fs.readdirSync("suites"))for(const f of fs.readdirSync(p.join("suites",k)))if(f.endsWith(".json")){
