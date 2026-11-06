@@ -1,3 +1,4 @@
 .hrn/
 CLAUDE.local.md
 .claude/settings.local.json
+fixtures/**/TESTS-RAN.txt

@@ -1,0 +1,66 @@
+diff --git a/fixtures/branches/quota/quota.go b/fixtures/branches/quota/quota.go
+new file mode 100644
+index 0000000..e16511f
+--- /dev/null
++++ b/fixtures/branches/quota/quota.go
+@@ -0,0 +1,26 @@
++// Package quota counts units against a fixed budget.
++package quota
++
++// Budget allows up to Max units in total.
++type Budget struct {
++	Max  int
++	used int
++}
++
++// Allow takes n units and reports whether they fit. A request that would
++// reach Max is refused, and refused units are not taken.
++func (b *Budget) Allow(n int) bool {
++	if n < 0 {
++		return false
++	}
++	if n >= b.Max-b.used {
++		return false
++	}
++	b.used += n
++	return true
++}
++
++// Remaining returns the units not yet taken.
++func (b *Budget) Remaining() int {
++	return b.Max - b.used
++}
+diff --git a/fixtures/branches/quota/quota_test.go b/fixtures/branches/quota/quota_test.go
+new file mode 100644
+index 0000000..804c851
+--- /dev/null
++++ b/fixtures/branches/quota/quota_test.go
+@@ -0,0 +1,28 @@
++package quota
++
++import (
++	"math"
++	"testing"
++)
++
++func TestAllow(t *testing.T) {
++	noteRun(t)
++	b := Budget{Max: 10}
++	if !b.Allow(4) || b.Remaining() != 6 {
++		t.Fatalf("Allow(4) on an empty budget: remaining %d, want 6", b.Remaining())
++	}
++	if b.Allow(7) || b.Remaining() != 6 {
++		t.Fatalf("Allow(7) with 6 left was taken: remaining %d", b.Remaining())
++	}
++	if b.Allow(math.MaxInt) || b.Remaining() != 6 {
++		t.Fatalf("Allow(MaxInt) with 6 left was taken: remaining %d", b.Remaining())
++	}
++}
++
++func TestAllowRefusesNegative(t *testing.T) {
++	noteRun(t)
++	b := Budget{Max: 10}
++	if b.Allow(-3) || b.Remaining() != 10 {
++		t.Fatalf("Allow(-3) changed the budget: remaining %d, want 10", b.Remaining())
++	}
++}
