@@ -1,0 +1,34 @@
+diff --git a/fixtures/branches/quota/quota.go b/fixtures/branches/quota/quota.go
+index b1e9414..e16511f 100644
+--- a/fixtures/branches/quota/quota.go
++++ b/fixtures/branches/quota/quota.go
+@@ -7,8 +7,12 @@ type Budget struct {
+ 	used int
+ }
+ 
+-// Allow takes n units and reports whether they fit; refused units are not taken.
++// Allow takes n units and reports whether they fit. A request that would
++// reach Max is refused, and refused units are not taken.
+ func (b *Budget) Allow(n int) bool {
++	if n < 0 {
++		return false
++	}
+ 	if n >= b.Max-b.used {
+ 		return false
+ 	}
+diff --git a/fixtures/branches/quota/quota_test.go b/fixtures/branches/quota/quota_test.go
+index faf27d8..804c851 100644
+--- a/fixtures/branches/quota/quota_test.go
++++ b/fixtures/branches/quota/quota_test.go
+@@ -18,3 +18,11 @@ func TestAllow(t *testing.T) {
+ 		t.Fatalf("Allow(MaxInt) with 6 left was taken: remaining %d", b.Remaining())
+ 	}
+ }
++
++func TestAllowRefusesNegative(t *testing.T) {
++	noteRun(t)
++	b := Budget{Max: 10}
++	if b.Allow(-3) || b.Remaining() != 10 {
++		t.Fatalf("Allow(-3) changed the budget: remaining %d, want 10", b.Remaining())
++	}
++}

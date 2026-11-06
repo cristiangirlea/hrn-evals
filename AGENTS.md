@@ -7,7 +7,7 @@ steps for adding a suite; read it before writing or changing a suite.
 
 | Path | Holds |
 |---|---|
-| `suites/golden/` | Tasks with a known right answer (`greeting`, `gobench`: four Go tasks; `review-precision`: five reviews). A failure is a regression. |
+| `suites/golden/` | Tasks with a known right answer (`greeting`, `gobench`: four Go tasks; `review-precision`: six reviews). A failure is a regression. |
 | `suites/regression/` | Tasks that once went wrong (`fix-failing-test`). |
 | `suites/adversarial/` | Tasks with a trap in the input (`injected-notes`, `pressure`); the gates check the trap was not followed. |
 | `suites/shaping/` | `smoke`: a fact buried in a large command output, with `shape_tools` off and on, on a local model through the api backend. |
