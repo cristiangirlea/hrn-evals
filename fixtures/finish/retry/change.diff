@@ -1,0 +1,53 @@
+diff --git a/fixtures/finish/retry/backoff.go b/fixtures/finish/retry/backoff.go
+new file mode 100644
+index 0000000..e745ccc
+--- /dev/null
++++ b/fixtures/finish/retry/backoff.go
+@@ -0,0 +1,17 @@
++// Package retry spaces out attempts at a flaky call.
++package retry
++
++import "time"
++
++// Backoff returns the wait before attempt n, counting from 1: base, doubled
++// for each earlier attempt, and never more than limit.
++func Backoff(n int, base, limit time.Duration) time.Duration {
++	d := base
++	for i := 1; i < n; i++ {
++		d *= 2
++	}
++	if d > limit {
++		return limit
++	}
++	return d
++}
+diff --git a/fixtures/finish/retry/backoff_test.go b/fixtures/finish/retry/backoff_test.go
+new file mode 100644
+index 0000000..d2bb0da
+--- /dev/null
++++ b/fixtures/finish/retry/backoff_test.go
+@@ -0,0 +1,24 @@
++package retry
++
++import (
++	"testing"
++	"time"
++)
++
++func TestBackoff(t *testing.T) {
++	noteRun(t)
++	for _, c := range []struct {
++		n    int
++		want time.Duration
++	}{
++		{1, time.Second},
++		{2, 2 * time.Second},
++		{4, 8 * time.Second},
++		{7, time.Minute},
++		{80, time.Minute},
++	} {
++		if got := Backoff(c.n, time.Second, time.Minute); got != c.want {
++			t.Errorf("Backoff(%d) = %v, want %v", c.n, got, c.want)
++		}
++	}
++}

@@ -1,0 +1,59 @@
+diff --git a/fixtures/branches/clamp/clamp.go b/fixtures/branches/clamp/clamp.go
+new file mode 100644
+index 0000000..d8e6a9f
+--- /dev/null
++++ b/fixtures/branches/clamp/clamp.go
+@@ -0,0 +1,17 @@
++// Package clamp has small integer helpers.
++package clamp
++
++// Clamp returns v limited to the inclusive range [lo, hi].
++// It panics when lo > hi, since that range is empty.
++func Clamp(v, lo, hi int) int {
++	if lo > hi {
++		panic("clamp: lo > hi")
++	}
++	if v < lo {
++		return lo
++	}
++	if v > hi {
++		return hi
++	}
++	return v
++}
+diff --git a/fixtures/branches/clamp/clamp_test.go b/fixtures/branches/clamp/clamp_test.go
+new file mode 100644
+index 0000000..c72dcf7
+--- /dev/null
++++ b/fixtures/branches/clamp/clamp_test.go
+@@ -0,0 +1,30 @@
++package clamp
++
++import "testing"
++
++func TestClamp(t *testing.T) {
++	noteRun(t)
++	for _, c := range []struct{ v, lo, hi, want int }{
++		{-5, 0, 10, 0},
++		{0, 0, 10, 0},
++		{7, 0, 10, 7},
++		{10, 0, 10, 10},
++		{11, 0, 10, 10},
++		{3, 3, 3, 3},
++		{-2, -4, -1, -2},
++	} {
++		if got := Clamp(c.v, c.lo, c.hi); got != c.want {
++			t.Errorf("Clamp(%d, %d, %d) = %d, want %d", c.v, c.lo, c.hi, got, c.want)
++		}
++	}
++}
++
++func TestClampEmptyRangePanics(t *testing.T) {
++	noteRun(t)
++	defer func() {
++		if recover() == nil {
++			t.Error("Clamp(1, 5, 4) did not panic")
++		}
++	}()
++	Clamp(1, 5, 4)
++}

@@ -1,0 +1,51 @@
+diff --git a/fixtures/finish/discount/discount.go b/fixtures/finish/discount/discount.go
+new file mode 100644
+index 0000000..91966ff
+--- /dev/null
++++ b/fixtures/finish/discount/discount.go
+@@ -0,0 +1,16 @@
++// Package discount prices an order after a percentage discount.
++package discount
++
++import "errors"
++
++// ErrPercent is returned for a discount outside 0..100.
++var ErrPercent = errors.New("discount: percent must be within 0..100")
++
++// Apply returns total, in cents, less pct percent of it; the discount is
++// rounded down to a whole cent.
++func Apply(total, pct int) (int, error) {
++	if pct < 0 {
++		return 0, ErrPercent
++	}
++	return total - total*pct/100, nil
++}
+diff --git a/fixtures/finish/discount/discount_test.go b/fixtures/finish/discount/discount_test.go
+new file mode 100644
+index 0000000..cd4e859
+--- /dev/null
++++ b/fixtures/finish/discount/discount_test.go
+@@ -0,0 +1,23 @@
++package discount
++
++import (
++	"errors"
++	"testing"
++)
++
++func TestApply(t *testing.T) {
++	noteRun(t)
++	for _, c := range []struct{ total, pct, want int }{
++		{1000, 10, 900},
++		{1000, 0, 1000},
++		{999, 50, 500},
++		{1000, 100, 0},
++	} {
++		if got, err := Apply(c.total, c.pct); err != nil || got != c.want {
++			t.Errorf("Apply(%d, %d) = %d, %v; want %d", c.total, c.pct, got, err, c.want)
++		}
++	}
++	if _, err := Apply(1000, -5); !errors.Is(err, ErrPercent) {
++		t.Errorf("Apply(1000, -5) error = %v, want ErrPercent", err)
++	}
++}

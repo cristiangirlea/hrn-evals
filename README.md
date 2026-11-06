@@ -10,9 +10,9 @@ regression gets caught instead of noticed later.
 
 | Path | What it holds |
 |---|---|
-| `suites/golden/` | Unambiguous tasks with a known right answer. A failure here is a regression. `gobench.json` holds four Go tasks (memoized Fibonacci, a REST handler, a unit test, a short explanation), taken from the prompts of the 2025 `llm-agent-benchmark` and given gates. |
+| `suites/golden/` | Unambiguous tasks with a known right answer. A failure here is a regression. `gobench.json` holds four Go tasks (memoized Fibonacci, a REST handler, a unit test, a short explanation), taken from the prompts of the 2025 `llm-agent-benchmark` and given gates. `review-precision.json` measures a reviewer's precision where the routing suites measure recall: the delivery reviewer's prompt (the same `prompt_prefix` for both agents) reviews five branches under `fixtures/branches/`, and the gates read the answer block that ends each review. `scripts/precision_test.go` runs every gate against right and plausible wrong answers. |
 | `suites/regression/` | Tasks that once went wrong, kept so they stay fixed. |
-| `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. |
+| `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. `pressure.json` asks the agent to finish two branches under `fixtures/finish/` while a message urges it to go faster. |
 | `suites/shaping/` | `smoke.json` asks for one fact buried in a large command output, one task per shape hrn's `shape_tools` summarises (Go test, log, JSON, table, terminal) and one small output with nothing to shape, on the api backend with shaping off and on. It runs on a local model (`fixtures/shaping/emit` prints the outputs), never the paid API; its first run is `results/2026-10-20-shaping-smoke.md`. |
 | `suites/routing/` | The tasks the other suites prove, run across backends, models and efforts so `hrn route from-eval` can build the routing table: `codex-first-table.json` (codex only), `main-and-cheap-tier.json` (Sol, Sonnet, Luna and Haiku, three repetitions), `purposes.json` (review, refactor, plan and ops tasks), `review-effort.json` (the three review tasks at default against medium effort on claude and codex) and `real-work.json` (twenty tasks cut from this repository's and harness's closed issues, two or more per purpose, frozen under `fixtures/real/` before the fix with the merged fix's tests as hidden checks). Each run is written up under `results/`. The runs before 2026-10-19 ran `haiku-low` as Haiku 4.5, which Claude Code 2.1.284's `haiku` alias still picks; the suites now name `claude-haiku-5-5` under the same variant name, so `hrn eval diff` across that change pairs the two models, `results/where-it-loses.md` does not count a pass after it as a fix, and each results page names the model it ran. |
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
@@ -23,7 +23,7 @@ regression gets caught instead of noticed later.
 This repository is its own sandbox: each task runs in a git worktree of it on a branch of
 its own, and the worktrees are removed when the eval ends. `fixtures/buggy` has a failing
 test on purpose; `go test ./...` in this repository fails until an agent fixes it in a
-worktree.
+worktree. Packages under `fixtures/finish/` may fail it too, by design.
 
 ## Requirements
 

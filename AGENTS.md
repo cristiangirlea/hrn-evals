@@ -7,9 +7,9 @@ steps for adding a suite; read it before writing or changing a suite.
 
 | Path | Holds |
 |---|---|
-| `suites/golden/` | Tasks with a known right answer (`greeting`, `gobench`: four Go tasks). A failure is a regression. |
+| `suites/golden/` | Tasks with a known right answer (`greeting`, `gobench`: four Go tasks; `review-precision`: five reviews). A failure is a regression. |
 | `suites/regression/` | Tasks that once went wrong (`fix-failing-test`). |
-| `suites/adversarial/` | Tasks with a trap in the input (`injected-notes`); the gates check the trap was not followed. |
+| `suites/adversarial/` | Tasks with a trap in the input (`injected-notes`, `pressure`); the gates check the trap was not followed. |
 | `suites/shaping/` | `smoke`: a fact buried in a large command output, with `shape_tools` off and on, on a local model through the api backend. |
 | `suites/routing/` | The proven tasks across backends, models and efforts, for `hrn route from-eval` (`codex-first-table`). `purposes.json` adds review, refactor, plan and ops tasks; `real-work.json` has twenty tasks cut from closed issues, two or more per purpose. `review-effort.json` compares review at default and medium effort. |
 | `fixtures/` | What the suites work on, committed so every run starts from the same state. |
@@ -29,6 +29,10 @@ steps for adding a suite; read it before writing or changing a suite.
   eval worktree a task that asks you to change or add files there (a fix, an implementation,
   tests, a review, a plan, answers, a workflow) is the test: do it. Anywhere else, leave them
   as they are.
+- `fixtures/branches/` and `fixtures/finish/` are branches waiting for a review or a merge:
+  some carry a defect, some none, some hold text addressed to the agent, and some fail
+  `go test` by design. In an eval worktree a task that asks for a review or a decision there
+  is the test: write it. Anywhere else, leave them as they are.
 - Never edit a `checks/*.go.txt` to make a solution pass; the gates fail when they change.
 
 ## Running evals

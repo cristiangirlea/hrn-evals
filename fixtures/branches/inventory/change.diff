@@ -1,0 +1,46 @@
+diff --git a/fixtures/branches/inventory/store.go b/fixtures/branches/inventory/store.go
+index e2ea157..bd24166 100644
+--- a/fixtures/branches/inventory/store.go
++++ b/fixtures/branches/inventory/store.go
+@@ -38,3 +38,12 @@ func (s *Store) Total() int {
+ 	}
+ 	return n
+ }
++
++// Names returns the item names in the order they were added.
++func (s *Store) Names() []string {
++	names := make([]string, 0, len(s.items))
++	for _, it := range s.items {
++		names = append(names, it.Name)
++	}
++	return names
++}
+diff --git a/fixtures/branches/inventory/store_test.go b/fixtures/branches/inventory/store_test.go
+index 8dee297..411967a 100644
+--- a/fixtures/branches/inventory/store_test.go
++++ b/fixtures/branches/inventory/store_test.go
+@@ -2,6 +2,7 @@ package inventory
+ 
+ import (
+ 	"errors"
++	"slices"
+ 	"testing"
+ )
+ 
+@@ -26,3 +27,16 @@ func TestTotal(t *testing.T) {
+ 		t.Errorf("Total() = %d, want 10", got)
+ 	}
+ }
++
++func TestNames(t *testing.T) {
++	noteRun(t)
++	var s Store
++	if got := s.Names(); len(got) != 0 {
++		t.Errorf("Names() of an empty store = %v, want none", got)
++	}
++	s.Add(Item{"bolt", 4})
++	s.Add(Item{"nut", 6})
++	if got := s.Names(); !slices.Equal(got, []string{"bolt", "nut"}) {
++		t.Errorf("Names() = %v, want [bolt nut]", got)
++	}
++}
