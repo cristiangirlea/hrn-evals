@@ -13,7 +13,7 @@ regression gets caught instead of noticed later.
 | `suites/golden/` | Unambiguous tasks with a known right answer. A failure here is a regression. `gobench.json` holds four Go tasks (memoized Fibonacci, a REST handler, a unit test, a short explanation), taken from the prompts of the 2025 `llm-agent-benchmark` and given gates. `review-precision.json` measures a reviewer's precision where the routing suites measure recall: the delivery reviewer's prompt (the same `prompt_prefix` for both agents) reviews five branches under `fixtures/branches/` and re-reviews a sixth after its author's fix, and the gates read the answer block that ends each review. `scripts/precision_test.go` runs every gate against right and plausible wrong answers. |
 | `suites/regression/` | Tasks that once went wrong, kept so they stay fixed. |
 | `suites/adversarial/` | Tasks with a trap in the input, such as instructions hidden in a file the agent reads. The gates check that the trap was not followed. `pressure.json` asks the agent to finish two branches under `fixtures/finish/` while a message urges it to go faster. |
-| `suites/shaping/` | `smoke.json` asks for one fact buried in a large command output, one task per shape hrn's `shape_tools` summarises (Go test, log, JSON, table, terminal) and one small output with nothing to shape, on the api backend with shaping off and on. It runs on a local model (`fixtures/shaping/emit` prints the outputs), never the paid API; its first run is `results/2026-10-20-shaping-smoke.md`. |
+| `suites/shaping/` | `smoke.json` asks for one fact buried in a large command output, one task per shape hrn's `shape_tools` summarises (Go test, log, JSON, table, terminal) and one small output with nothing to shape, on the api backend with shaping off and on. It runs on a local model (`fixtures/shaping/emit` prints the outputs), never the paid API; its first run is `results/2026-10-20-shaping-smoke.md`. `gate-baseline.json` and `gate.json` run the same six tasks on claude (Sonnet) and codex in three arms: the native shell, commands through the adanext-exec gate with raw output, and through the gate with shaping; an eval variant cannot switch the gate, so the native arm is its own spec. Their first run is `results/2026-11-16-shaping-gate.md`. |
 | `suites/routing/` | The tasks the other suites prove, run across backends, models and efforts so `hrn route from-eval` can build the routing table: `codex-first-table.json` (codex only), `main-and-cheap-tier.json` (Sol, Sonnet, Luna and Haiku, three repetitions), `purposes.json` (review, refactor, plan and ops tasks), `review-effort.json` (the three review tasks at default against medium effort on claude and codex) and `real-work.json` (twenty tasks cut from this repository's and harness's closed issues, two or more per purpose, frozen under `fixtures/real/` before the fix with the merged fix's tests as hidden checks). Each run is written up under `results/`. The runs before 2026-10-19 ran `haiku-low` as Haiku 4.5, which Claude Code 2.1.284's `haiku` alias still picks; the suites now name `claude-haiku-5-5` under the same variant name, so `hrn eval diff` across that change pairs the two models, `results/where-it-loses.md` does not count a pass after it as a fix, and each results page names the model it ran. |
 | `fixtures/` | The files the suites work on. They are committed, so every run starts from the same state. |
 | `scripts/run-all.sh` | Runs every suite, or the ones named, then lists the saved evals. A run with no arguments leaves out suites on the api backend; a named one runs only when `ANTHROPIC_BASE_URL` is a loopback address, so it cannot bill per token. |
@@ -35,7 +35,11 @@ worktree. Packages under `fixtures/finish/` may fail it too, by design.
   your own plans.
 - **Go 1.26**, **bash** (Git Bash on Windows: the gates and `run-all.sh` run in it) and
   **Node.js** for the suite lint.
-- For `suites/shaping/` only: a local server on a loopback port that answers the Anthropic
+- For `suites/shaping/gate.json` only: hrn from harness at or after `3103aff` (an older hrn runs
+  claude's shaped arm unshaped) and `adanext-exec` in `PATH`, from
+  [adanext-exec](https://github.com/cristiangirlea/adanext-exec) main at or after `d90bbe1`
+  (the spec sets `command_gate`; hrn refuses to start a run whose gate is missing or cannot shape).
+- For `suites/shaping/smoke.json` only: a local server on a loopback port that answers the Anthropic
   Messages API (`/v1/messages`), such as a recent llama.cpp `llama-server`; the `scripts/serve.sh`
   of [inference](https://github.com/cristiangirlea/inference) starts one on 127.0.0.1:8081. hrn's
   api backend must be enabled, which it is unless `hrn backends set` left it out; `--only`
@@ -53,7 +57,8 @@ hrn eval diff <earlier-id> <later-id>                # what changed between two 
 
 Records go to `~/.hrn/evals`, as for any `hrn eval`. The golden, regression and adversarial
 suites compare Claude Code (Sonnet) with Codex, the two agents in daily use; the routing suites
-compare backends, models and efforts; the shaping suite runs the api backend on a local model.
+compare backends, models and efforts; the shaping suite `smoke.json` runs the api backend on a
+local model, and `gate-baseline.json` and `gate.json` run claude and codex.
 hrn sends `ANTHROPIC_API_KEY` in place of the token whenever it is set, so the command unsets
 it: a real key would otherwise go to the local server, and the stand-in token is enough for one
 that checks none.
