@@ -13,7 +13,7 @@ steps for adding a suite; read it before writing or changing a suite.
 | `suites/shaping/` | `smoke`: a fact buried in a large command output, with `shape_tools` off and on, on a local model through the api backend. `gate-baseline` and `gate`: the same tasks on claude and codex with no gate, the gate raw and the gate shaped. |
 | `suites/routing/` | The proven tasks across backends, models and efforts, for `hrn route from-eval` (`codex-first-table`). `purposes.json` adds review, refactor, plan and ops tasks; `real-work.json` has twenty tasks cut from closed issues, two or more per purpose. `review-effort.json` compares review at default and medium effort. |
 | `fixtures/` | What the suites work on, committed so every run starts from the same state. |
-| `fixtures/gobench/checks/*.go.txt`, `fixtures/real/checks/*.go.txt` | Hidden tests a gate copies into place after the agent finishes. |
+| `fixtures/gobench/checks/*.go.txt`, `fixtures/real/checks/*.go.txt` | Hidden tests a gate copies into place after the agent finishes. Every suite's `hide` list keeps them, `suites/`, `scripts/` and `results/` out of the agent's worktree. |
 | `results/<date>.md` | Written-up runs: hrn commit, agent versions, eval ids for `hrn eval diff`. |
 | `scripts/run-all.sh` | Runs every suite (or the ones named) with `hrn eval`, then `hrn eval list`; api suites only when named, against a loopback `ANTHROPIC_BASE_URL`. |
 
@@ -61,7 +61,7 @@ go test -count=1 ./scripts/
 ```
 
 plus the suite lint in `.claude/skills/check/SKILL.md` (every spec parses, `"dir": "../.."`, no
-`retry`, every prompt ends with "Do not run git."). A new or changed gate must also be checked
+`retry`, the `hide` list on the spec, every prompt ends with "Do not run git."). A new or changed gate must also be checked
 both ways (README, "Adding a suite", step 4); the run of each variant is the owner's to do.
 
 ## Rules for suites
