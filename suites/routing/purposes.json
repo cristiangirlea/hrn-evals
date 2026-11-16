@@ -1,5 +1,6 @@
 {
   "dir": "../..",
+  "hide": ["suites/**", "scripts/**", "results/**", "fixtures/*/checks/**", "fixtures/*/*/checks/**"],
   "mode": "yolo",
   "parallel": 3,
   "max_turns": 25,

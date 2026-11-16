@@ -88,11 +88,16 @@ each model loses; items per second uses elapsed wall time, not summed parallel d
 1. Put what the task needs under `fixtures/<name>/` and commit it. A check the agent should
    not write to its own taste goes in as `*.go.txt` (see `fixtures/gobench/checks/`), which
    the gate copies into place after the agent finishes and which a gate verifies was not
-   changed. The agent can still read it; the gate only stops it from editing it. Write such a
+   changed. The suite's `hide` list keeps it out of the agent's worktree, so keep checks in
+   a `checks/` folder one or two levels under `fixtures/`. Write such a
    test as an external `_test` package, so its names cannot collide with the agent's code.
 2. Write `suites/<kind>/<name>.json`. Keep `"dir": "../.."` so the agents and the gates run
    at the repository root, and end every prompt with "Do not run git": the harness commits
-   whatever the agent leaves.
+   whatever the agent leaves. Keep the `hide` list of the other suites as it is: hrn takes
+   the suites (with their gates), `scripts/`, `results/` and the checks out of the worktree
+   while the agent runs and puts them back for the gates, so a task cannot read its own
+   answer key. It needs hrn at harness `ae516f8` or later. The files are still in git, which
+   is one more reason for "Do not run git". Nothing a task needs may live under a hidden path.
 3. Make every gate print why it failed (`|| { echo '...'; exit 1; }`); that text is what a
    diff and a retry show.
 4. Check every gate both ways: it must pass a correct solution and fail a plausible wrong
