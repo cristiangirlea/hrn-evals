@@ -37,6 +37,7 @@
       "id": "implement-variant-name",
       "prompt": "Implement DisplayName in fixtures/real/variantname/name.go: a variant with a name is called by it, and one without is called by its backend, model and effort joined with hyphens, leaving out an empty model or effort. Then implement Validate as fixtures/real/variantname/REQUIREMENTS.md describes. Do not change REQUIREMENTS.md or the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/variantname/REQUIREMENTS.md || { echo 'REQUIREMENTS.md was changed'; exit 1; }",
         "cp fixtures/real/checks/variantname_test.go.txt fixtures/real/variantname/variantname_hidden_test.go || { echo 'could not install the hidden test variantname'; exit 1; }",
@@ -48,6 +49,7 @@
       "id": "implement-event-line-limit",
       "prompt": "Make ReadEvents in fixtures/real/events/client.go report an event line over its 1 MiB limit as an error that says \"event line exceeds 1 MiB limit\" and wraps bufio.ErrTooLong. Then resolve what fixtures/real/events/ISSUE.md reports about Watch. Keep every other behaviour of the package. Do not change ISSUE.md or the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/events/ISSUE.md || { echo 'ISSUE.md was changed'; exit 1; }",
         "cp fixtures/real/checks/events_limit_test.go.txt fixtures/real/events/events_limit_hidden_test.go || { echo 'could not install the hidden test events_limit'; exit 1; }",
@@ -60,6 +62,7 @@
       "id": "implement-estimate-mark",
       "prompt": "Implement Cost in fixtures/real/estimate/cost.go for the losses page's cost cells. Every cost hrn or a CLI reports is a list-price estimate, never a bill, so a non-zero cost reads as the number, written with strconv.FormatFloat(n, 'f', -1, 64), followed by \" (estimate)\", and a zero reads \"0\". A variant whose total Cost is zero and that hrn did not estimate (CostIsEstimate false) is unpriced, since hrn had no price for it: every one of its costs reads \"unpriced\". Do not change the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "cp fixtures/real/checks/estimate_test.go.txt fixtures/real/estimate/estimate_hidden_test.go || { echo 'could not install the hidden test estimate'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/real/estimate/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -70,6 +73,7 @@
       "id": "implement-shown-path",
       "prompt": "Implement Shown in fixtures/real/shownpath/shownpath.go. The losses page prints the command that produced it, and a --home or --out path on that command can name the user's account. An absolute or home-relative path, in Unix or Windows form (/x, ~/x, C:\\x, C:/x, \\\\server\\share), whatever the OS the page is made on, is shown as .../ followed by its last element, ignoring trailing separators; any other value is shown as it is. Do not change the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "cp fixtures/real/checks/shownpath_test.go.txt fixtures/real/shownpath/shownpath_hidden_test.go || { echo 'could not install the hidden test shownpath'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/real/shownpath/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -80,6 +84,7 @@
       "id": "debug-system32-case",
       "prompt": "On a PC whose PATH spells the Windows folder C:\\WINDOWS\\system32, hrn picks WSL's bash.exe launcher instead of Git Bash, so its commands run in WSL's filesystem view. InSystem32 in fixtures/real/wslpath/wslpath.go makes that decision. Investigate why it goes wrong and fix it for either path separator. Do not change the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "cp fixtures/real/checks/wslpath_test.go.txt fixtures/real/wslpath/wslpath_hidden_test.go || { echo 'could not install the hidden test wslpath'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/real/wslpath/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -90,6 +95,7 @@
       "id": "debug-idle-zero",
       "prompt": "Investigate this report: hrn gc --idle 0 should remove every build cache, yet it sometimes keeps one that a build wrote a moment ago, and --free-below with a minimum idle time of 0 can skip that cache the same way. The decisions are made in fixtures/real/cacheage/cacheage.go. Find the cause and fix it wherever it applies. Do not change the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "cp fixtures/real/checks/cacheage_test.go.txt fixtures/real/cacheage/cacheage_hidden_test.go || { echo 'could not install the hidden test cacheage'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/real/cacheage/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -100,6 +106,7 @@
       "id": "debug-quoted-path",
       "prompt": "Investigate this report: hrn's run viewer shortens a program's path to its file name, but it leaves \"C:\\Program Files\\Bob's Tools\\tool.exe\" --help as it is, in plain text and in JSON text alike, and in JSON text a single-quoted path that is never closed runs on into the next field. Program in fixtures/real/quotedpath/quotedpath.go reads such a path; its comment says what i and j are. Fix it. Do not change the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "cp fixtures/real/checks/quotedpath_test.go.txt fixtures/real/quotedpath/quotedpath_hidden_test.go || { echo 'could not install the hidden test quotedpath'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/real/quotedpath/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -110,6 +117,7 @@
       "id": "test-moved-cache",
       "prompt": "Write a table-driven test for IsMovedCache in fixtures/real/movedcache/movedcache_test.go. Cover both name forms, a name with no PID before its hyphen (.gc--name), a name that ends right after the PID's hyphen, a moved cache given as a full path with folders, and an ordinary cache folder. Do not change movedcache.go. Make sure go test ./fixtures/real/movedcache/ passes. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/movedcache/movedcache.go || { echo 'movedcache.go was changed'; exit 1; }",
         "test -f fixtures/real/movedcache/movedcache_test.go || { echo 'movedcache_test.go is missing'; exit 1; }",
         "go test -count=1 ./fixtures/real/movedcache/ || { echo 'the tests fail on the correct IsMovedCache'; exit 1; }",
@@ -123,6 +131,7 @@
       "id": "test-path-separator",
       "prompt": "Write a table-driven test for SepAt in fixtures/real/pathsep/pathsep_test.go. Cover a slash, a single backslash and a JSON-escaped double backslash, each on Windows and elsewhere, a position past the end of the string, and a character that is no separator. Do not change pathsep.go. Make sure go test ./fixtures/real/pathsep/ passes. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/pathsep/pathsep.go || { echo 'pathsep.go was changed'; exit 1; }",
         "test -f fixtures/real/pathsep/pathsep_test.go || { echo 'pathsep_test.go is missing'; exit 1; }",
         "go test -count=1 ./fixtures/real/pathsep/ || { echo 'the tests fail on the correct SepAt'; exit 1; }",
@@ -136,6 +145,7 @@
       "id": "test-cell-escape",
       "prompt": "Write tests for Cell in fixtures/real/cellescape/cell_test.go. Cell must keep a Markdown table intact whatever a gate printed: cover a pipe, a line break and an HTML tag. Do not change cell.go. Make sure go test ./fixtures/real/cellescape/ passes. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/cellescape/cell.go || { echo 'cell.go was changed'; exit 1; }",
         "test -f fixtures/real/cellescape/cell_test.go || { echo 'cell_test.go is missing'; exit 1; }",
         "go test -count=1 ./fixtures/real/cellescape/ || { echo 'the tests fail on the correct Cell'; exit 1; }",
@@ -149,6 +159,7 @@
       "id": "research-eval-expand",
       "prompt": "Explain how hrn expands an eval spec into cells by answering from fixtures/real/research/eval.go.txt, an excerpt of hrn's source, in fixtures/real/research/ANSWERS-EVAL.md, one numbered answer per question: 1. How many times does each cell run when an eval spec leaves repeats out? 2. What name does a matrix variant get when it has no name, the backend codex, no model and the effort high? Then answer the questions in fixtures/real/research/QUESTIONS-EVAL.md the same way, continuing the numbering. Do not change the source or the questions. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/research/eval.go.txt || { echo 'eval.go.txt was changed'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/research/QUESTIONS-EVAL.md || { echo 'QUESTIONS-EVAL.md was changed'; exit 1; }",
         "test -s fixtures/real/research/ANSWERS-EVAL.md || { echo 'fixtures/real/research/ANSWERS-EVAL.md is missing or empty'; exit 1; }",
@@ -162,6 +173,7 @@
       "id": "research-gate-timeout",
       "prompt": "Explain how hrn bounds and kills gate commands by answering from fixtures/real/research/batch.go.txt, excerpts of hrn's source, in fixtures/real/research/ANSWERS-BATCH.md, one numbered answer per question: 1. How long may a gate command run when neither the batch spec nor the task sets gate_timeout? 2. What is the largest gate_timeout a spec may set? 3. When a task and its spec both set gate_timeout, which applies? 4. What exit code does hrn record for a gate it killed, and what does the gate result's Killed field hold when gate_timeout ran out? Do not change the source. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/research/batch.go.txt || { echo 'batch.go.txt was changed'; exit 1; }",
         "test -s fixtures/real/research/ANSWERS-BATCH.md || { echo 'fixtures/real/research/ANSWERS-BATCH.md is missing or empty'; exit 1; }",
         "awk -v n=1 '{ line = $0; hit = 0; if (match(line, /^([*#]+[[:space:]]*)?[0-9]+[.):][*]*|^#+[[:space:]]*[0-9]+[[:space:]]*$/)) { listed = 1; hit = 1 } else if (!listed && match(line, /^\\|[[:space:]]*[0-9]+[[:space:]]*\\|/)) hit = 1; if (hit) { lab = substr(line, RSTART, RLENGTH); gsub(/[^0-9]/, \"\", lab); p = (lab + 0 == n); if (p) line = substr(line, RSTART + RLENGTH) } if (p) print line }' fixtures/real/research/ANSWERS-BATCH.md | tr '\\n' ' ' | grep -qiE '\\b15 ?(m|min|mins|minutes)\\b' || { echo 'answer 1 does not say 15 minutes'; exit 1; }",
@@ -175,6 +187,7 @@
       "id": "review-idle-age",
       "prompt": "Review the code in fixtures/real/review-idle/idle.go and write your findings to fixtures/real/review-idle/REVIEW.md, one finding per line with its line number. Do not change the source. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s fixtures/real/review-idle/REVIEW.md || { echo 'fixtures/real/review-idle/REVIEW.md is missing or empty'; exit 1; }",
         "[ -n \"$(grep -iE '(^|[^0-9])(17|18|19|20|21)([^0-9]|$)' fixtures/real/review-idle/REVIEW.md | grep -iE '(negative|future|after now|ahead|clock|resolution|skew|clamp|below zero|less than (zero|0)|< ?0)')\" ] || { echo 'the review does not find the negative age at line 19'; exit 1; }",
         "[ -n \"$(grep -iE '(^|[^0-9])(29|30|31|32|33)([^0-9]|$)' fixtures/real/review-idle/REVIEW.md | grep -iE '(negative|future|after now|ahead|clock|resolution|skew|clamp|below zero|less than (zero|0)|< ?0|same|likewise|as (on |at |in )?line 19)')\" ] || { echo 'the review does not find the same negative age at line 31'; exit 1; }",
@@ -185,6 +198,7 @@
       "id": "review-event-retry",
       "prompt": "Review the code in fixtures/real/review-retry/watch.go and write your findings to fixtures/real/review-retry/REVIEW.md, one finding per line with its line number. Do not change the source. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s fixtures/real/review-retry/REVIEW.md || { echo 'fixtures/real/review-retry/REVIEW.md is missing or empty'; exit 1; }",
         "[ -n \"$(grep -iE '(^|[^0-9])(62|63|64|65|66|67|68|69|70|71|80|81|82|83|84|85|98|99|100|143|144|145)([^0-9]|$)' fixtures/real/review-retry/REVIEW.md | grep -iE '(too long|ErrTooLong|1 ?MiB|oversiz|limit|buffer|large|huge|long line)' | grep -iE '(retr|again|reconnect|loop|forever|for ever|repeat|30|refetch|re-fetch)')\" ] || { echo 'the review does not find that Watch retries an oversized event line instead of stopping'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/review-retry/watch.go || { echo 'watch.go was changed'; exit 1; }"
@@ -194,6 +208,7 @@
       "id": "refactor-suite-key",
       "prompt": "Refactor fixtures/real/suitekey/suitekey.go: it removes duplicates and sorts in two places. Make one unexported helper do that for both Tasks and Key, without changing what they return. Keep both exported functions and their signatures. Do not change the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "cp fixtures/real/checks/suitekey_test.go.txt fixtures/real/suitekey/suitekey_hidden_test.go || { echo 'could not install the hidden test suitekey'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/real/suitekey/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -206,6 +221,7 @@
       "id": "refactor-request-headers",
       "prompt": "Refactor fixtures/real/events/client.go: Request and Watch each build their HTTP request and set its Authorization header. Move that into one unexported helper that both use, without changing behaviour. Do not change ISSUE.md or the checks under fixtures/real/checks. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/checks || { echo 'the checks under fixtures/real/checks was changed'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/real/events/ISSUE.md || { echo 'ISSUE.md was changed'; exit 1; }",
         "cp fixtures/real/checks/events_headers_test.go.txt fixtures/real/events/events_headers_hidden_test.go || { echo 'could not install the hidden test events_headers'; exit 1; }",
@@ -219,6 +235,7 @@
       "id": "plan-budget-guard",
       "prompt": "Write a plan, as fixtures/real/plan-budget/PLAN-ANSWER.md, for adding a spending budget to RunAll in fixtures/real/plan-budget/runner.go, so that a batch stops starting tasks once their cost reaches a limit. Use at most 400 words, name RunAll, give at least three numbered or bulleted steps, include testing, and meet the constraints in fixtures/real/plan-budget/CONSTRAINTS.md. Do not change the code or the constraints. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s fixtures/real/plan-budget/PLAN-ANSWER.md || { echo 'fixtures/real/plan-budget/PLAN-ANSWER.md is missing or empty'; exit 1; }",
         "w=$(wc -w < fixtures/real/plan-budget/PLAN-ANSWER.md); [ \"$w\" -le 400 ] || { echo \"too long: $w words\"; exit 1; }",
         "grep -q 'RunAll' fixtures/real/plan-budget/PLAN-ANSWER.md || { echo 'the plan does not name RunAll'; exit 1; }",
@@ -234,6 +251,7 @@
       "id": "plan-unpriced",
       "prompt": "Write a plan, as fixtures/real/plan-unpriced/PLAN-ANSWER.md, for changing fixtures/real/plan-unpriced/compare.go so that a variant hrn has no price for is not ranked as the cheapest by its zero cost. Codex runs report a cost of 0 when hrn lacks their model's price. Use at most 300 words, name the function that ranks the pair, give at least three numbered or bulleted steps, say what such a pair is compared on instead, and include testing. Do not change compare.go. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s fixtures/real/plan-unpriced/PLAN-ANSWER.md || { echo 'fixtures/real/plan-unpriced/PLAN-ANSWER.md is missing or empty'; exit 1; }",
         "w=$(wc -w < fixtures/real/plan-unpriced/PLAN-ANSWER.md); [ \"$w\" -le 300 ] || { echo \"too long: $w words\"; exit 1; }",
         "grep -q 'cheaper' fixtures/real/plan-unpriced/PLAN-ANSWER.md || { echo 'the plan does not name cheaper'; exit 1; }",
@@ -247,6 +265,7 @@
       "id": "ops-runner-workflow",
       "prompt": "Add a GitHub Actions workflow at fixtures/real/ops-runner/.github/workflows/ci.yml that runs go vet and go test on Linux and on Windows, on push and on pull_request. The workflow belongs to the Go module in fixtures/real/ops-runner as if that directory were its own repository: the checkout root is the module. Which runners to use, and when, is in fixtures/real/ops-runner/RUNNERS.md. Change nothing else under the fixture. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -f fixtures/real/ops-runner/.github/workflows/ci.yml || { echo 'ci.yml is missing'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE 'runs-on:[[:space:]]*[^$[:alnum:]]{0,3}\\$\\{\\{[[:space:]]*vars\\.CI_RUNNER[[:space:]]*\\}\\}' || { echo 'no job runs on vars.CI_RUNNER'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//' fixtures/real/ops-runner/.github/workflows/ci.yml | grep -qE 'runs-on:[[:space:]]*[^$[:alnum:]]{0,3}\\$\\{\\{[[:space:]]*vars\\.CI_RUNNER_WINDOWS[[:space:]]*\\}\\}' || { echo 'no job runs on vars.CI_RUNNER_WINDOWS'; exit 1; }",
@@ -267,6 +286,7 @@
       "id": "ops-dockerignore",
       "prompt": "Write fixtures/real/ops-docker/.dockerignore so that the Docker build context, which is the fixtures/real/ops-docker directory, holds only what its Dockerfile builds from: no docs, scripts or local env files, and nothing a later change adds to the directory unless the Dockerfile needs it. Change nothing else under the fixture. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s fixtures/real/ops-docker/.dockerignore || { echo '.dockerignore is missing or empty'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | head -1 | grep -qxE '/?(\\*{1,2}|\\*\\*/\\*)' || { echo '.dockerignore does not start by leaving everything out'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//; s/[[:space:]]+$//' fixtures/real/ops-docker/.dockerignore | grep -v '^$' | grep -qxE '!/?go\\.mod' || { echo 'go.mod is not let back in'; exit 1; }",

@@ -6,6 +6,7 @@
   "max_turns": 20,
   "timeout": "15m",
   "gate": [
+    "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
     "go test ./fixtures/buggy/",
     "git diff --quiet HEAD -- fixtures/buggy/sum_test.go || { echo 'the test file was changed'; exit 1; }"
   ],

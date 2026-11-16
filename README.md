@@ -103,6 +103,10 @@ each model loses; items per second uses elapsed wall time, not summed parallel d
    while the agent runs and puts them back for the gates, so a task cannot read its own
    answer key. It needs hrn at harness `ae516f8` or later. The files are still in git, which
    is one more reason for "Do not run git". Nothing a task needs may live under a hidden path.
+   Start every task's gate list with the no-commit gate, copied from `noCommitGate` in
+   `scripts/nocommit_test.go`: it fails a cell whose agent moved HEAD (a commit, reset or
+   checkout), which would also hide the agent's changes from any gate that compares with
+   `git status` or `git diff HEAD`. The test checks every suite for it.
 3. Make every gate print why it failed (`|| { echo '...'; exit 1; }`); that text is what a
    diff and a retry show.
 4. Check every gate both ways: it must pass a correct solution and fail a plausible wrong
