@@ -71,6 +71,9 @@ both ways (README, "Adding a suite", step 4); the run of each variant is the own
   hrn hands a gate to `bash -c` from Go, so a doubled backslash anywhere in a gate reaches bash as
   one (write `[.]` or `[\]`), and `grep` with both `-i` and `-F` aborts without a UTF-8 locale;
   `scripts/gates_test.go` checks both. Check a gate both ways as hrn runs it, not at a prompt.
+- Every task's gate list starts with the no-commit gate (`noCommitGate` in
+  `scripts/nocommit_test.go`, which checks it is there): a task's own gates replace the suite's.
+  It needs fresh worktrees, so no suite sets `"worktrees": "slots"`.
 - A suite's matrix compares the two agents in daily use (`claude` with Sonnet, `codex`); ask
   before adding a variant that bills per token (`api` backend) or a `judge`.
   A `suites/routing/` suite compares backends, models and efforts instead, so that

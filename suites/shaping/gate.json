@@ -33,6 +33,7 @@
       "id": "shape-test",
       "prompt": "Run `go run ./fixtures/shaping/emit test` from the repository root. It prints the verbose output of a Go test run in which exactly one subtest fails. Write to answer.txt at the repository root only the failing subtest's full name and the two numbers its failure message reports. Do not change any file under fixtures/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
         "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
         "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
@@ -44,6 +45,7 @@
       "id": "shape-log",
       "prompt": "Run `go run ./fixtures/shaping/emit log` from the repository root. It prints a service log with exactly one ERROR line. Write to answer.txt at the repository root only that error's order id and its reason. Do not change any file under fixtures/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
         "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
         "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
@@ -55,6 +57,7 @@
       "id": "shape-json",
       "prompt": "Run `go run ./fixtures/shaping/emit json` from the repository root. It prints a JSON array of stock items. Write to answer.txt at the repository root only the qty and the warehouse of the item whose sku is SKU-32100. Do not change any file under fixtures/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
         "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
         "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
@@ -66,6 +69,7 @@
       "id": "shape-table",
       "prompt": "Run `go run ./fixtures/shaping/emit table` from the repository root. It prints a CSV table of sales. Write to answer.txt at the repository root only the units and the revenue_eur of the row for region EU-North and product P-0612. Do not change any file under fixtures/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
         "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
         "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
@@ -77,6 +81,7 @@
       "id": "shape-terminal",
       "prompt": "Run `go run ./fixtures/shaping/emit terminal` from the repository root. It prints a build log in which exactly one line reports a digest. Write to answer.txt at the repository root only the module that line names and its sha256 value. Do not change any file under fixtures/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
         "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
         "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",
@@ -88,6 +93,7 @@
       "id": "shape-noop",
       "prompt": "Run `go run ./fixtures/shaping/emit small` from the repository root. It prints a short bundle log. Write to answer.txt at the repository root only the build id it reports. Do not change any file under fixtures/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s answer.txt || { echo 'answer.txt is missing or empty'; exit 1; }",
         "[ -z \"$(git status --porcelain -- fixtures/shaping)\" ] || { echo 'a file under fixtures/shaping was changed or added'; exit 1; }",
         "[ \"$(wc -c < answer.txt)\" -le 300 ] || { echo 'answer.txt holds more than the answer'; exit 1; }",

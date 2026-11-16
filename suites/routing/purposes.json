@@ -36,6 +36,7 @@
       "id": "review-planted-defects",
       "prompt": "Review the code in fixtures/purposes/review/ and write your findings to fixtures/purposes/review/REVIEW.md, one finding per line with the line number. Do not change the source. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -s fixtures/purposes/review/REVIEW.md || { echo 'REVIEW.md is missing or empty'; exit 1; }",
         "grep -iE '(^|[^0-9])(9|1[0-5])([^0-9]|$)' fixtures/purposes/review/REVIEW.md | grep -qiE '(off[- ]by[- ]one|out of range|bounds|<=|panic)' || { echo 'review does not identify the off-by-one at line 11'; exit 1; }",
         "grep -iE '(^|[^0-9])(1[89]|2[01])([^0-9]|$)' fixtures/purposes/review/REVIEW.md | grep -qiE '(unchecked|ignor|unhandled|missing error|lack|(not|never|n.t)( being)? (check|handl)|dropped|discard|swallow|thrown away|blank identifier|no error[- ]check(s|ing)? (on|for|of))' || { echo 'review does not identify the unchecked error at line 19'; exit 1; }",
@@ -47,6 +48,7 @@
       "id": "refactor-duplication",
       "prompt": "Refactor fixtures/purposes/refactor/dup.go to remove the duplication without changing behaviour. Keep the exported Sum and Mean functions and their signatures, empty-input error, and input slices unchanged. Keep one shared validation using the line if len(values) == 0 {. Do not change checks/. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "git diff --quiet HEAD -- fixtures/purposes/refactor/checks || { echo 'the checks were changed'; exit 1; }",
         "cp fixtures/purposes/refactor/checks/dup_test.go.txt fixtures/purposes/refactor/dup_hidden_test.go || { echo 'could not install the hidden test'; exit 1; }",
         "go test -count=1 -run '^$' ./fixtures/purposes/refactor/ || { echo 'the package or a test file in it does not build'; exit 1; }",
@@ -61,6 +63,7 @@
       "id": "plan-rate-limiting",
       "prompt": "Write a plan, as fixtures/purposes/plan/PLAN-ANSWER.md, for adding rate limiting to the handler in fixtures/purposes/plan/handler.go. Use at most 400 words, name the handler function, give at least three numbered or bulleted steps, and include testing. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -f fixtures/purposes/plan/PLAN-ANSWER.md || { echo 'PLAN-ANSWER.md is missing'; exit 1; }",
         "w=$(wc -w < fixtures/purposes/plan/PLAN-ANSWER.md); [ \"$w\" -le 400 ] || { echo \"too long: $w words\"; exit 1; }",
         "grep -q 'StatusHandler' fixtures/purposes/plan/PLAN-ANSWER.md || { echo 'plan does not name StatusHandler'; exit 1; }",
@@ -72,6 +75,7 @@
       "id": "ops-ci-workflow",
       "prompt": "Add a GitHub Actions workflow at fixtures/purposes/ops/.github/workflows/ci.yml that runs go vet and go test on ubuntu-latest and windows-latest. The workflow belongs to the Go module in fixtures/purposes/ops as if that directory were its own repository: the checkout root is the module, so run the commands there, with no working-directory or cd into fixtures/. Change nothing else under the fixture. Do not run git.",
       "gate": [
+        "b=$(git reflog --format=%H HEAD | tail -n 1); [ -n \"$b\" ] || { echo 'HEAD has no reflog, so a commit by the agent cannot be ruled out'; exit 1; }; if git reflog --format=%H HEAD | grep -qv \"$b\"; then echo 'the agent moved HEAD with git (a commit, reset or checkout) though the prompt says not to run git; latest moves:'; git reflog --format='%h %gs' HEAD | head -n 5; exit 1; fi; [ \"$(git rev-parse -q --verify HEAD)\" = \"$b\" ] || { echo 'HEAD is not at the commit the cell started from though its reflog shows no move: the agent rewrote a ref or the reflog'; exit 1; }",
         "test -f fixtures/purposes/ops/.github/workflows/ci.yml || { echo 'ci.yml is missing'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -qE '(^|[[:space:]{,-])(runs-on|os|runner|platform):.*ubuntu-latest|^[[:space:]]*-[[:space:]]*.?ubuntu-latest' || { echo 'ci.yml does not run on ubuntu-latest: it must be a runs-on or matrix os value'; exit 1; }",
         "sed -E 's/(^|[[:space:]])#.*//' fixtures/purposes/ops/.github/workflows/ci.yml | grep -qE '(^|[[:space:]{,-])(runs-on|os|runner|platform):.*windows-latest|^[[:space:]]*-[[:space:]]*.?windows-latest' || { echo 'ci.yml does not run on windows-latest: it must be a runs-on or matrix os value'; exit 1; }",
