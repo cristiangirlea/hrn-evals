@@ -18,7 +18,9 @@ type gateCase struct {
 	pass   bool
 }
 
-// taskGates returns the gates of one task in a suite, the task's own or the suite's.
+// taskGates returns the gates of one task in a suite, the task's own or the
+// suite's, without the no-commit gate: these run in this checkout, whose HEAD
+// moves with its own history, and nocommit_test.go checks that gate on a cell.
 func taskGates(t *testing.T, suite, id string) []string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "suites", suite))
@@ -37,10 +39,13 @@ func taskGates(t *testing.T, suite, id string) []string {
 	}
 	for _, task := range spec.Tasks {
 		if task.ID == id {
-			if len(task.Gate) > 0 {
-				return task.Gate
+			var gates []string
+			for _, g := range effectiveGates(task.Gate, spec.Gate) {
+				if g != noCommitGate {
+					gates = append(gates, g)
+				}
 			}
-			return spec.Gate
+			return gates
 		}
 	}
 	t.Fatalf("%s: no task %s", suite, id)
