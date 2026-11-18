@@ -106,7 +106,8 @@ each model loses; items per second uses elapsed wall time, not summed parallel d
    Start every task's gate list with the no-commit gate, copied from `noCommitGate` in
    `scripts/nocommit_test.go`: it fails a cell whose agent moved HEAD (a commit, reset or
    checkout), which would also hide the agent's changes from any gate that compares with
-   `git status` or `git diff HEAD`. The test checks every suite for it.
+   `git status` or `git diff HEAD`. It needs fresh worktrees, so no suite sets
+   `"worktrees": "slots"`. The test checks every suite for both.
 3. Make every gate print why it failed (`|| { echo '...'; exit 1; }`); that text is what a
    diff and a retry show.
 4. Check every gate both ways: it must pass a correct solution and fail a plausible wrong

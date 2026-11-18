@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -78,6 +81,151 @@ func TestAnEmptyTaskGateListReplacesTheSuites(t *testing.T) {
 	}
 	if got := effectiveGates(spec.Tasks[1].Gate, spec.Gate); len(got) != 1 || got[0] != "suite" {
 		t.Errorf("a task without gates runs %q, want the suite's", got)
+	}
+}
+
+// namesTheGate matches text that would tell an agent under eval about the gate.
+var namesTheGate = regexp.MustCompile(`(?i)no[\W_]*commits?[\W_]*gate|nocommit_?test`)
+
+// The agents run at the root of a cell, a checkout of the tracked files, and
+// load its agent files; an agent told about the gate makes the eval stop
+// measuring the rule.
+func TestAgentFilesDoNotNameTheNoCommitGate(t *testing.T) {
+	out, err := exec.Command("git", "-C", "..", "ls-files", "-z").Output()
+	if err != nil {
+		t.Fatalf("git ls-files: %v", err)
+	}
+	tracked := strings.Split(strings.TrimRight(string(out), "\x00"), "\x00")
+	files, err := agentContext(tracked, func(f string) ([]byte, error) {
+		return os.ReadFile(filepath.Join("..", filepath.FromSlash(f)))
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, root := range []string{"AGENTS.md", "CLAUDE.md"} {
+		if _, ok := files[root]; !ok {
+			t.Errorf("%s was not checked: it is missing or no longer counts as loaded", root)
+		}
+	}
+	for f, b := range files {
+		if m := namesTheGate.Find(b); m != nil {
+			t.Errorf("%s names the no-commit gate (%q), and the agents under eval load it", f, m)
+		}
+	}
+}
+
+// loadedByAgents reports whether claude or codex reads a tracked file into its context.
+func loadedByAgents(f string) bool {
+	switch path.Base(f) {
+	case "AGENTS.md", "AGENTS.override.md", "CLAUDE.md", "CLAUDE.local.md":
+		return true
+	}
+	for _, dir := range []string{".claude/", ".agents/", ".codex/"} {
+		if strings.HasPrefix(f, dir) {
+			return true
+		}
+	}
+	return false
+}
+
+var (
+	codeSpan  = regexp.MustCompile("(?s)```.*?```|`[^`\n]*`")
+	importRef = regexp.MustCompile(`(?m)(?:^|\s)@(\S+)`)
+)
+
+// agentContext returns the tracked files the agents load: the agent files and
+// whatever they import with Claude Code's @path, relative to the importing file.
+func agentContext(tracked []string, read func(string) ([]byte, error)) (map[string][]byte, error) {
+	isTracked := map[string]bool{}
+	var queue []string
+	for _, f := range tracked {
+		isTracked[f] = true
+		if loadedByAgents(f) {
+			queue = append(queue, f)
+		}
+	}
+	files := map[string][]byte{}
+	for len(queue) > 0 {
+		f := queue[0]
+		queue = queue[1:]
+		if _, done := files[f]; done {
+			continue
+		}
+		b, err := read(f)
+		if err != nil {
+			return nil, err
+		}
+		files[f] = b
+		for _, m := range importRef.FindAllStringSubmatch(codeSpan.ReplaceAllString(string(b), ""), -1) {
+			ref := strings.TrimRight(m[1], ".,;:)")
+			if to := path.Clean(path.Join(path.Dir(f), ref)); isTracked[to] {
+				queue = append(queue, to)
+			}
+		}
+	}
+	return files, nil
+}
+
+func TestLoadedByAgents(t *testing.T) {
+	for f, want := range map[string]bool{
+		"AGENTS.md": true, "CLAUDE.md": true, "sub/AGENTS.override.md": true, "fixtures/x/CLAUDE.md": true,
+		".claude/rules/a.md": true, ".claude/settings.json": true, ".agents/skills/a/SKILL.md": true, ".codex/config.toml": true,
+		"README.md": false, "scripts/x.go": false, "docs/a.md": false, "CLAUDE.local.md": true,
+	} {
+		if got := loadedByAgents(f); got != want {
+			t.Errorf("loadedByAgents(%q) = %v, want %v", f, got, want)
+		}
+	}
+}
+
+func TestAgentContextFollowsImports(t *testing.T) {
+	content := map[string]string{
+		"CLAUDE.md":      "@AGENTS.md\n",
+		"AGENTS.md":      "See @docs/a.md. Not `@docs/code.md`, nor mail@docs/b.md or @missing.md.\n```\n@docs/fenced.md\n```\n",
+		"docs/a.md":      "and @c.md\n",
+		"docs/c.md":      "",
+		"docs/b.md":      "",
+		"docs/code.md":   "",
+		"docs/fenced.md": "",
+		"README.md":      "",
+	}
+	var tracked []string
+	for f := range content {
+		tracked = append(tracked, f)
+	}
+	files, err := agentContext(tracked, func(f string) ([]byte, error) { return []byte(content[f]), nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for f := range files {
+		got = append(got, f)
+	}
+	slices.Sort(got)
+	if want := []string{"AGENTS.md", "CLAUDE.md", "docs/a.md", "docs/c.md"}; !slices.Equal(got, want) {
+		t.Errorf("agentContext loads %q, want %q", got, want)
+	}
+}
+
+func TestNamesTheGateMatchesTheOldRule(t *testing.T) {
+	for _, s := range []string{
+		"- Every task's gate list starts with the no-commit gate (`noCommitGate` in",
+		"`scripts/nocommit_test.go`, which checks it is there",
+		"the No Commit Gate",
+		"starts with the no-commit\n  gate (",
+		"no\ncommit gate",
+		"the no-commits gate",
+		"the no‑commit gate",
+		"no_commit_gate",
+	} {
+		if !namesTheGate.MatchString(s) {
+			t.Errorf("namesTheGate misses %q", s)
+		}
+	}
+	for _, s := range []string{"every prompt ends with \"Do not run git.\"", "a commit by the agent", "gates_test.go"} {
+		if namesTheGate.MatchString(s) {
+			t.Errorf("namesTheGate matches %q", s)
+		}
 	}
 }
 
