@@ -1,0 +1,68 @@
+{
+ "cell": "watch-dest-document.claude.hrn.r2",
+ "task": "watch-dest-document",
+ "backend": "claude",
+ "arm": "hrn",
+ "repeat": 2,
+ "base": "d33b29e61d8eee163a13160752d9203d3633ee0d",
+ "started": "2026-11-07T15:55:15+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 24,
+  "cache_read": 546920,
+  "cache_write": 31679,
+  "output": 6685
+ },
+ "status": "ok",
+ "command": [
+  "hrn",
+  "run",
+  "-b",
+  "claude",
+  "--mode",
+  "yolo",
+  "--dir",
+  "<wt>",
+  "--timeout",
+  "15m",
+  "--no-switch",
+  "--json",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 322.7,
+ "timed_out": false,
+ "hrn_run_id": "20261107-155515-ec58d0",
+ "turns": 17,
+ "tool_calls": 16,
+ "model": "claude-opus-5-5",
+ "usage_status": null,
+ "cost_usd": 0.49661199999999994,
+ "cost_estimate": null,
+ "agent_duration_s": 322.4,
+ "refusal_flags": 0,
+ "event_kinds": {
+  "info": 3,
+  "session": 1,
+  "tool_call": 16,
+  "usage": 12,
+  "quota": 1,
+  "tool_result": 16,
+  "text": 5
+ },
+ "guard_refusals_seen": 0,
+ "agent_committed": false,
+ "changed_files": [
+  "docs/watch.md",
+  "internal/watch/access_test.go",
+  "internal/watch/server.go"
+ ],
+ "patch_bytes": 7800,
+ "gate_pass": true,
+ "gate_s": 8.7,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/watch\t6.566s"
+ ],
+ "finished": "2026-11-07T16:00:47+02:00",
+ "stderr_line_count": 0
+}

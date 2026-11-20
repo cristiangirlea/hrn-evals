@@ -1,0 +1,65 @@
+{
+ "cell": "watch-quoted-path.codex.hrn.r2",
+ "task": "watch-quoted-path",
+ "backend": "codex",
+ "arm": "hrn",
+ "repeat": 2,
+ "base": "8610318375f4e04e1f67a444181a6e5c1148b45d",
+ "started": "2026-11-07T15:01:36+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 759765,
+  "cache_read": 737536,
+  "cache_write": 0,
+  "output": 3046
+ },
+ "status": "ok",
+ "command": [
+  "hrn",
+  "run",
+  "-b",
+  "codex",
+  "--mode",
+  "yolo",
+  "--dir",
+  "<wt>",
+  "--timeout",
+  "15m",
+  "--no-switch",
+  "--json",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 200.4,
+ "timed_out": false,
+ "hrn_run_id": "20261107-150136-96a707",
+ "turns": 1,
+ "tool_calls": 9,
+ "model": "gpt-6.1-terra",
+ "usage_status": "reported",
+ "cost_usd": null,
+ "cost_estimate": null,
+ "agent_duration_s": 199.9,
+ "refusal_flags": 0,
+ "event_kinds": {
+  "info": 3,
+  "session": 1,
+  "text": 6,
+  "tool_call": 9,
+  "tool_result": 9
+ },
+ "guard_refusals_seen": 0,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/watch/paths.go",
+  "internal/watch/paths_test.go"
+ ],
+ "patch_bytes": 3463,
+ "gate_pass": true,
+ "gate_s": 13.5,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/watch\t10.387s"
+ ],
+ "finished": "2026-11-07T15:05:11+02:00",
+ "stderr_line_count": 0
+}

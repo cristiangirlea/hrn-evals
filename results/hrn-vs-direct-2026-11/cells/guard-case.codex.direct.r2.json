@@ -1,0 +1,52 @@
+{
+ "cell": "guard-case.codex.direct.r2",
+ "task": "guard-case",
+ "backend": "codex",
+ "arm": "direct",
+ "repeat": 2,
+ "base": "7f52c91304131ffa000a005aa08789de0234d8cf",
+ "started": "2026-11-07T13:47:05+02:00",
+ "notes": [
+  "codex exec reports no cost"
+ ],
+ "tokens": {
+  "input": 769180,
+  "cache_read": 718592,
+  "cache_write": 0,
+  "output": 3125
+ },
+ "status": "ok",
+ "command": [
+  "codex",
+  "exec",
+  "--json",
+  "--skip-git-repo-check",
+  "-C",
+  "<wt>",
+  "--dangerously-bypass-approvals-and-sandbox",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 175.5,
+ "timed_out": false,
+ "usage_status": "reported",
+ "turns": 1,
+ "tool_calls": 14,
+ "cost_usd": null,
+ "agent_committed": false,
+ "changed_files": [
+  "docs/permissions.md",
+  "internal/tools/guard.go",
+  "internal/tools/guard_test.go"
+ ],
+ "patch_bytes": 4206,
+ "gate_pass": true,
+ "gate_s": 20.7,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/tools\t18.545s"
+ ],
+ "finished": "2026-11-07T13:50:21+02:00",
+ "model": "gpt-6.1-terra",
+ "cli_version": "0.166.0-alpha.6",
+ "stderr_line_count": 0
+}

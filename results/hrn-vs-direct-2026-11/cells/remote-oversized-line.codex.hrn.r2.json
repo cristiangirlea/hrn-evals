@@ -1,0 +1,65 @@
+{
+ "cell": "remote-oversized-line.codex.hrn.r2",
+ "task": "remote-oversized-line",
+ "backend": "codex",
+ "arm": "hrn",
+ "repeat": 2,
+ "base": "65d63c7dd185f495a5559dd69c71885a480b2d79",
+ "started": "2026-11-07T14:49:18+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 162680,
+  "cache_read": 147712,
+  "cache_write": 0,
+  "output": 1370
+ },
+ "status": "ok",
+ "command": [
+  "hrn",
+  "run",
+  "-b",
+  "codex",
+  "--mode",
+  "yolo",
+  "--dir",
+  "<wt>",
+  "--timeout",
+  "15m",
+  "--no-switch",
+  "--json",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 46.6,
+ "timed_out": false,
+ "hrn_run_id": "20261107-144918-51d708",
+ "turns": 1,
+ "tool_calls": 7,
+ "model": "gpt-6.1-terra",
+ "usage_status": "reported",
+ "cost_usd": null,
+ "cost_estimate": null,
+ "agent_duration_s": 46.2,
+ "refusal_flags": 0,
+ "event_kinds": {
+  "info": 3,
+  "session": 1,
+  "text": 3,
+  "tool_call": 7,
+  "tool_result": 7
+ },
+ "guard_refusals_seen": 0,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/remote/client.go",
+  "internal/remote/client_test.go"
+ ],
+ "patch_bytes": 2337,
+ "gate_pass": true,
+ "gate_s": 2.8,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/remote\t0.820s"
+ ],
+ "finished": "2026-11-07T14:50:08+02:00",
+ "stderr_line_count": 0
+}

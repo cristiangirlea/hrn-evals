@@ -1,0 +1,51 @@
+{
+ "cell": "watch-dest-document.codex.direct.r1",
+ "task": "watch-dest-document",
+ "backend": "codex",
+ "arm": "direct",
+ "repeat": 1,
+ "base": "d33b29e61d8eee163a13160752d9203d3633ee0d",
+ "started": "2026-11-07T14:31:30+02:00",
+ "notes": [
+  "codex exec reports no cost"
+ ],
+ "tokens": {
+  "input": 1124118,
+  "cache_read": 1088384,
+  "cache_write": 0,
+  "output": 3255
+ },
+ "status": "ok",
+ "command": [
+  "codex",
+  "exec",
+  "--json",
+  "--skip-git-repo-check",
+  "-C",
+  "<wt>",
+  "--dangerously-bypass-approvals-and-sandbox",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 198.2,
+ "timed_out": false,
+ "usage_status": "reported",
+ "turns": 1,
+ "tool_calls": 14,
+ "cost_usd": null,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/watch/access_test.go",
+  "internal/watch/server.go"
+ ],
+ "patch_bytes": 4823,
+ "gate_pass": true,
+ "gate_s": 9.3,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/watch\t7.229s"
+ ],
+ "finished": "2026-11-07T14:34:57+02:00",
+ "model": "gpt-6.1-terra",
+ "cli_version": "0.166.0-alpha.6",
+ "stderr_line_count": 0
+}

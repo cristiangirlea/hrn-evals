@@ -1,0 +1,65 @@
+{
+ "cell": "privacy-check-dedupe.codex.hrn.r1",
+ "task": "privacy-check-dedupe",
+ "backend": "codex",
+ "arm": "hrn",
+ "repeat": 1,
+ "base": "e05ab415c1bbd1f84ce9fe9ce9306ec7a89f65ce",
+ "started": "2026-11-07T15:39:02+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 499625,
+  "cache_read": 469632,
+  "cache_write": 0,
+  "output": 2984
+ },
+ "status": "ok",
+ "command": [
+  "hrn",
+  "run",
+  "-b",
+  "codex",
+  "--mode",
+  "yolo",
+  "--dir",
+  "<wt>",
+  "--timeout",
+  "15m",
+  "--no-switch",
+  "--json",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 165.7,
+ "timed_out": false,
+ "hrn_run_id": "20261107-153902-8cc848",
+ "turns": 1,
+ "tool_calls": 8,
+ "model": "gpt-6.1-terra",
+ "usage_status": "reported",
+ "cost_usd": null,
+ "cost_estimate": null,
+ "agent_duration_s": 165.4,
+ "refusal_flags": 0,
+ "event_kinds": {
+  "info": 3,
+  "session": 1,
+  "text": 4,
+  "tool_call": 8,
+  "tool_result": 8
+ },
+ "guard_refusals_seen": 0,
+ "agent_committed": false,
+ "changed_files": [
+  "scripts/privacy-check/main.go",
+  "scripts/privacy-check/main_test.go"
+ ],
+ "patch_bytes": 3353,
+ "gate_pass": true,
+ "gate_s": 3.7,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/scripts/privacy-check\t1.730s"
+ ],
+ "finished": "2026-11-07T15:41:52+02:00",
+ "stderr_line_count": 0
+}

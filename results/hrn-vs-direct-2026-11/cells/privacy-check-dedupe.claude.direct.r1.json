@@ -1,0 +1,48 @@
+{
+ "cell": "privacy-check-dedupe.claude.direct.r1",
+ "task": "privacy-check-dedupe",
+ "backend": "claude",
+ "arm": "direct",
+ "repeat": 1,
+ "base": "e05ab415c1bbd1f84ce9fe9ce9306ec7a89f65ce",
+ "started": "2026-11-07T18:26:45+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 24,
+  "cache_read": 678260,
+  "cache_write": 49534,
+  "output": 5520
+ },
+ "status": "ok",
+ "command": [
+  "claude",
+  "-p",
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--permission-mode",
+  "bypassPermissions"
+ ],
+ "exit_code": 0,
+ "wall_s": 236.8,
+ "timed_out": false,
+ "turns": 13,
+ "tokens_source": "result line",
+ "cost_usd": 0.6424199999999999,
+ "cost_estimate": false,
+ "agent_duration_s": 232.9,
+ "model": "claude-opus-5-5",
+ "agent_committed": false,
+ "changed_files": [
+  "scripts/privacy-check/main.go",
+  "scripts/privacy-check/main_test.go"
+ ],
+ "patch_bytes": 3662,
+ "gate_pass": true,
+ "gate_s": 4.2,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/scripts/privacy-check\t1.633s"
+ ],
+ "finished": "2026-11-07T18:30:47+02:00",
+ "stderr_line_count": 1
+}

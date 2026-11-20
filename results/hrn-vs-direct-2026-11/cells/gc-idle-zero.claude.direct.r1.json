@@ -1,0 +1,48 @@
+{
+ "cell": "gc-idle-zero.claude.direct.r1",
+ "task": "gc-idle-zero",
+ "backend": "claude",
+ "arm": "direct",
+ "repeat": 1,
+ "base": "3a23bf78acf272781ee24f7c4a949647fc181b41",
+ "started": "2026-11-07T14:51:09+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 30,
+  "cache_read": 914272,
+  "cache_write": 54788,
+  "output": 6242
+ },
+ "status": "ok",
+ "command": [
+  "claude",
+  "-p",
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--permission-mode",
+  "bypassPermissions"
+ ],
+ "exit_code": 0,
+ "wall_s": 297.5,
+ "timed_out": false,
+ "turns": 22,
+ "tokens_source": "result line",
+ "cost_usd": 0.7461184000000001,
+ "cost_estimate": false,
+ "agent_duration_s": 287.1,
+ "model": "claude-opus-5-5",
+ "agent_committed": false,
+ "changed_files": [
+  "internal/gc/cache.go",
+  "internal/gc/cache_test.go"
+ ],
+ "patch_bytes": 3711,
+ "gate_pass": true,
+ "gate_s": 382.3,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/gc\t378.372s"
+ ],
+ "finished": "2026-11-07T15:02:31+02:00",
+ "stderr_line_count": 1
+}

@@ -1,0 +1,25 @@
+issue=211 pr=268 side=base rc=1 secs=36 base=7f52c91
+issue=211 pr=268 side=fix rc=0 secs=31 base=7f52c91
+issue=245 pr=278 side=base rc=1 secs=5 base=3a23bf7
+issue=245 pr=278 side=fix rc=0 secs=467 base=3a23bf7
+issue=228 pr=259 side=base rc=1 secs=15 base=d33b29e
+issue=228 pr=259 side=fix rc=0 secs=19 base=d33b29e
+issue=164 pr=271 side=base rc=1 secs=10 base=65d63c7
+issue=164 pr=271 side=fix rc=0 secs=12 base=65d63c7
+issue=237 pr=363 side=base rc=1 secs=16 base=8610318
+issue=237 pr=363 side=fix rc=0 secs=22 base=8610318
+issue=349 pr=350 side=base rc=1 secs=44 base=804f6ca
+issue=349 pr=350 side=fix rc=0 secs=37 base=804f6ca
+issue=149 pr=300 side=base rc=1 secs=37 base=10107b0
+issue=149 pr=300 side=fix rc=0 secs=30 base=10107b0
+issue=429 pr=532 side=base rc=1 secs=47 base=8a8044f
+issue=429 pr=532 side=fix rc=0 secs=64 base=8a8044f
+issue=607 pr=639 side=base rc=1 secs=52 base=2a8c7cf
+issue=607 pr=639 side=fix rc=0 secs=60 base=2a8c7cf
+issue=348 pr=393 side=base rc=1 secs=38 base=6ebc351
+issue=348 pr=393 side=fix rc=0 secs=46 base=6ebc351
+issue=648 pr=658 side=base rc=1 secs=12 base=e05ab41
+issue=648 pr=658 side=fix rc=0 secs=17 base=e05ab41
+issue=122 pr=490 side=base rc=1 secs=28 base=344c331
+issue=122 pr=490 side=fix rc=0 secs=33 base=344c331
+DONE
