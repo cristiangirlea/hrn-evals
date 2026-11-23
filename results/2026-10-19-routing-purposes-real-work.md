@@ -217,6 +217,24 @@ that fails a task outright, as Luna did on `debug-quoted-path` and `review-idle-
 variants that pass most of them. Luna's "missing file" runs are the reason to keep watching its
 rows on real work.
 
+## The two ops gates, checked again on 2026-11-23
+
+The gates of `ops-runner-workflow` and `ops-dockerignore` were tightened on 2026-11-23. The ones
+this run used could pass a workflow that names `go vet` and `go test` without running both in
+both jobs, and ignore rules whose exceptions do not bring the sources back. To see whether a
+cell of `7bd77` passed that way, what each of the 24 cells on these two tasks wrote was rebuilt
+from its run record, since the clone the eval ran in is gone. That gives 23 files:
+`ops-dockerignore luna-low r2` wrote none, which is its recorded failure. For 20 the record
+holds the text the agent's file tool wrote; three codex cells wrote theirs with a shell command,
+whose text the record holds without its line ends, so those were tried with both kinds.
+
+- This run's gates, run again on the rebuilt files, give all 23 the verdict recorded above: 22
+  passes, and `ops-runner-workflow luna-low r3` failing with the same message.
+- The tightened gates give the same 22 passes and the same failure.
+
+No cell passed by either route, so no score, cost or routing row on this page changes
+(**measured** by running both sets of gates on the rebuilt files; no agent was run again).
+
 ## Against the publication gate
 
 This page claims no saving and no quality difference. It records the evals and the table built

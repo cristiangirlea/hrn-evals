@@ -96,6 +96,17 @@ Two things this run showed have been changed since. Neither was measured again h
 - A routing row can now name a fallback per backend, so a retry on another backend runs a
   chosen model, not that backend's default.
 
+## The two ops gates, checked again on 2026-11-23
+
+The gates of `ops-runner-workflow` and `ops-dockerignore` were tightened on 2026-11-23: the ones
+this run used could pass a workflow that names `go vet` and `go test` without running both in
+both jobs, and ignore rules whose exceptions do not bring the sources back. The twelve files
+this run left for the two tasks, one per task and repeat in each arm, were kept: the batch's on
+its branches in the scratch clone, the plain sessions' with each session's output. All twelve
+pass the tightened gates, as they passed the gates of the run, so none passed by either route
+and no count on this page changes (measured by running the gates on the kept files; no agent
+was run again).
+
 ## What could not be compared
 
 - **Harder or longer work.** These tasks are small and, but for the two that share a file, stand
