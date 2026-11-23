@@ -22,7 +22,12 @@ jobs:
           go-version-file: go.mod
       - run: go build ./... && go vet ./...
       - run: go test -count=1 ./scripts/
-      - run: bash -n scripts/run-all.sh scripts/stream-eval.sh scripts/where-it-loses.sh
+      - name: script syntax
+        # One call per script: bash -n reads the first path and passes the rest to it.
+        run: |
+          bash -n scripts/run-all.sh
+          bash -n scripts/stream-eval.sh
+          bash -n scripts/where-it-loses.sh
       - name: suite lint
         run: |
           node -e '
