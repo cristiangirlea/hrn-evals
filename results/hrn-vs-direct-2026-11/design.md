@@ -116,18 +116,35 @@ The text above is the design as written before the first run. The run departed f
 - **What is published.** The public records leave out the error text and stderr along with the
   final answers, and no codex run has a cost, estimated or not.
 
-Known weaknesses of the runner and the validator, left as they ran because they are the record
-of this run; none changed a number here:
+## The scripts after the run
 
-- The direct arm's environment drops the desktop app's variables but does not remove an
-  `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. Neither was set on the day.
-- The runner reads hrn's estimate flag under the name `cost_estimate`; hrn writes
-  `cost_is_estimate`, so the flag is empty in every hrn cell. The report draws no conclusion from cost.
-- A direct codex run's model is the model name that appears most often in codex's session file,
-  not a field read from one known event. All 16 agree with the 16 hrn runs.
-- Cells are written in place, not through a temporary file.
-- `validate-gates.sh` records an exit code only, goes on after a worktree or a test file fails to
-  set up, and prints DONE either way. The saved output of each run was read by hand instead; the
-  report's gate table has what it showed.
+The runner and the validator had weaknesses on the day. None changed a number here, and each is
+closed in the copies published with this page, so the scripts are no longer byte for byte what
+ran. No agent was run to try the changes; what was tried is named per item.
+
+- **API keys.** The direct arm's environment did not remove an `ANTHROPIC_API_KEY` or
+  `OPENAI_API_KEY`; neither was set on the day. Now `runner.py` starts no agent and no gate with
+  one (tried with fake values), and `validate-gates.sh` unsets them before its gates. The git
+  and `hrn backends` calls of `runner.py` still see the caller's environment.
+- **hrn's estimate flag.** The runner read it as `cost_estimate`; hrn writes `cost_is_estimate`,
+  so the flag is empty in every hrn cell here. The runner now reads the right name. The report
+  draws no conclusion from cost.
+- **A direct codex run's model** was the model name found most often anywhere in codex's session
+  file. All 16 agree with the 16 hrn runs. It is now read from the turns' own records (tried on
+  a made-up file with a decoy name in a message).
+- **Cells were written in place.** Now through a temporary file.
+- **Two lanes of one backend** could run at once, as happened. A lane now takes a lock file and a
+  second one is refused (tried without starting an agent).
+- **The validator** recorded an exit code only, went on after a worktree or a test file failed to
+  set up, and printed DONE either way. It now reads the task list, stops at a setup error, and
+  runs each gate three ways: the commit before the fix must pass with its own tests, fail once
+  the merged fix's test files are copied in, and the merge must pass. The copied files are then
+  the only difference, so they are the reason for the failure; the test it prints beside each
+  line is for the reader and decides nothing. A `go build` that fails on any side is reported
+  as that, never taken for the failing test. It was run again on 2026-11-23:
+  `validate-2026-11-23.log`.
+- **Tests.** `scripts/test_runner.py` tries the runner's changes and
+  `scripts/test-validate-gates.sh` tries the validator on a made-up repository, with the cases it
+  must refuse. Neither starts an agent.
 - Both scripts default to scratch folders on a second drive; `HRN_VS_DIRECT_WORK` and
-  `HRN_VS_DIRECT_TMP` move the runner's.
+  `HRN_VS_DIRECT_TMP` move them.

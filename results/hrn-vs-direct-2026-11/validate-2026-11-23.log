@@ -1,0 +1,25 @@
+task=guard-case issue=211 pr=268 side=own rc=0 secs=31 base=7f52c91 passes with its own tests
+task=guard-case issue=211 pr=268 side=base rc=1 secs=25 base=7f52c91 TestGuardBlocks fails
+task=guard-case issue=211 pr=268 side=fix rc=0 secs=22 base=7f52c91 passes
+task=gc-idle-zero issue=245 pr=278 side=own rc=0 secs=91 base=3a23bf7 passes with its own tests
+task=gc-idle-zero issue=245 pr=278 side=base rc=1 secs=4 base=3a23bf7 does not build: internal/gc/cache_test.go:368:12: undefined: ageAt
+task=gc-idle-zero issue=245 pr=278 side=fix rc=0 secs=79 base=3a23bf7 passes
+task=watch-dest-document issue=228 pr=259 side=own rc=0 secs=10 base=d33b29e passes with its own tests
+task=watch-dest-document issue=228 pr=259 side=base rc=1 secs=10 base=d33b29e TestPublicAccessAllowsPageNavigationAfterLoginAndKeepsOtherGuards fails
+task=watch-dest-document issue=228 pr=259 side=fix rc=0 secs=9 base=d33b29e passes
+task=remote-oversized-line issue=164 pr=271 side=own rc=0 secs=3 base=65d63c7 passes with its own tests
+task=remote-oversized-line issue=164 pr=271 side=base rc=1 secs=7 base=65d63c7 TestWatchStopsOnOversizedEventLine fails
+task=remote-oversized-line issue=164 pr=271 side=fix rc=0 secs=4 base=65d63c7 passes
+task=watch-quoted-path issue=237 pr=363 side=own rc=0 secs=25 base=8610318 passes with its own tests
+task=watch-quoted-path issue=237 pr=363 side=base rc=1 secs=16 base=8610318 TestPathsInAWindowsRunAreShortenedToTheWorkspaceHomeAndProgramNames fails;TestPathsInAUnixRunAreShortenedToTheWorkspaceHomeAndProgramNames fails
+task=watch-quoted-path issue=237 pr=363 side=fix rc=0 secs=20 base=8610318 passes
+task=codex-reconnect-keeps-error issue=349 pr=350 side=own rc=0 secs=29 base=804f6ca passes with its own tests
+task=codex-reconnect-keeps-error issue=349 pr=350 side=base rc=1 secs=32 base=804f6ca TestCodexAReconnectNoticeKeepsTheErrorBeforeIt fails
+task=codex-reconnect-keeps-error issue=349 pr=350 side=fix rc=0 secs=31 base=804f6ca passes
+task=durable-partial-usage issue=149 pr=300 side=own rc=0 secs=26 base=10107b0 passes with its own tests
+task=durable-partial-usage issue=149 pr=300 side=base rc=1 secs=23 base=10107b0 TestDurableFailedStreamKeepsPartialUsage fails
+task=durable-partial-usage issue=149 pr=300 side=fix rc=0 secs=23 base=10107b0 passes
+task=privacy-check-dedupe issue=648 pr=658 side=own rc=0 secs=5 base=e05ab41 passes with its own tests
+task=privacy-check-dedupe issue=648 pr=658 side=base rc=1 secs=4 base=e05ab41 TestTheRunReportsEachFindingOnceInAConflictedFile fails
+task=privacy-check-dedupe issue=648 pr=658 side=fix rc=0 secs=5 base=e05ab41 passes
+DONE: 8 gates pass before their fix, fail there with the copied tests, and pass at the merge
