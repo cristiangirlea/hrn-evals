@@ -1,0 +1,1515 @@
+{
+ "routed": [
+  {
+   "arm": "routed",
+   "repeat": 1,
+   "batch": "20261110-180332-964f73",
+   "wall_s": 335,
+   "tasks": {
+    "implement-variant-name": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 44
+    },
+    "implement-event-line-limit": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 70
+    },
+    "implement-estimate-mark": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ],
+      [
+       "claude",
+       "claude-fable-5-1",
+       "ok"
+      ]
+     ],
+     "seconds": 184
+    },
+    "implement-shown-path": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 36
+    },
+    "debug-system32-case": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 47
+    },
+    "debug-idle-zero": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 33
+    },
+    "debug-quoted-path": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 52
+    },
+    "test-moved-cache": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 33
+    },
+    "test-path-separator": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 31
+    },
+    "test-cell-escape": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 38
+    },
+    "research-eval-expand": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ],
+      [
+       "claude",
+       "claude-opus-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 60
+    },
+    "research-gate-timeout": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 45
+    },
+    "review-idle-age": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 29
+    },
+    "review-event-retry": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 32
+    },
+    "refactor-suite-key": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 33
+    },
+    "refactor-request-headers": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 38
+    },
+    "plan-budget-guard": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ],
+      [
+       "codex",
+       "gpt-6-astra",
+       "ok"
+      ]
+     ],
+     "seconds": 73
+    },
+    "plan-unpriced": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ],
+      [
+       "codex",
+       "gpt-6-astra",
+       "ok"
+      ]
+     ],
+     "seconds": 56
+    },
+    "ops-runner-workflow": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 26
+    },
+    "ops-dockerignore": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 24
+    }
+   },
+   "tokens": {
+    "codex": 2200449,
+    "claude": 1244900
+   },
+   "cost_usd": {
+    "codex": 0.71,
+    "claude": 2.19
+   },
+   "attempts": 24,
+   "first_pass": 16,
+   "retried": 4,
+   "rescued": 4,
+   "rescued_by": {
+    "claude": 2,
+    "codex": 2
+   },
+   "cost_total_usd": 2.9,
+   "passed": 20,
+   "claude_week": [
+    94,
+    82
+   ],
+   "codex_week": [
+    37,
+    37
+   ]
+  },
+  {
+   "arm": "routed",
+   "repeat": 2,
+   "batch": "20261110-182225-9fc1a5",
+   "wall_s": 261,
+   "tasks": {
+    "implement-variant-name": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 52
+    },
+    "implement-event-line-limit": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 50
+    },
+    "implement-estimate-mark": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 34
+    },
+    "implement-shown-path": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 40
+    },
+    "debug-system32-case": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 23
+    },
+    "debug-idle-zero": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 31
+    },
+    "debug-quoted-path": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 46
+    },
+    "test-moved-cache": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 29
+    },
+    "test-path-separator": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 32
+    },
+    "test-cell-escape": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 45
+    },
+    "research-eval-expand": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ],
+      [
+       "claude",
+       "claude-opus-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 50
+    },
+    "research-gate-timeout": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ],
+      [
+       "claude",
+       "claude-opus-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 61
+    },
+    "review-idle-age": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 25
+    },
+    "review-event-retry": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 31
+    },
+    "refactor-suite-key": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 41
+    },
+    "refactor-request-headers": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 45
+    },
+    "plan-budget-guard": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 38
+    },
+    "plan-unpriced": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 24
+    },
+    "ops-runner-workflow": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 29
+    },
+    "ops-dockerignore": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 28
+    }
+   },
+   "tokens": {
+    "codex": 2059590,
+    "claude": 1299148
+   },
+   "cost_usd": {
+    "codex": 0.22,
+    "claude": 1.09
+   },
+   "attempts": 22,
+   "first_pass": 18,
+   "retried": 2,
+   "rescued": 2,
+   "rescued_by": {
+    "claude": 2
+   },
+   "cost_total_usd": 1.31,
+   "passed": 20,
+   "claude_week": [
+    82,
+    81
+   ],
+   "codex_week": [
+    36,
+    36
+   ]
+  },
+  {
+   "arm": "routed",
+   "repeat": 3,
+   "batch": "20261110-182647-c30e69",
+   "wall_s": 243,
+   "tasks": {
+    "implement-variant-name": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 32
+    },
+    "implement-event-line-limit": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 57
+    },
+    "implement-estimate-mark": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 37
+    },
+    "implement-shown-path": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 34
+    },
+    "debug-system32-case": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 25
+    },
+    "debug-idle-zero": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 30
+    },
+    "debug-quoted-path": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 38
+    },
+    "test-moved-cache": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 28
+    },
+    "test-path-separator": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 38
+    },
+    "test-cell-escape": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 24
+    },
+    "research-eval-expand": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 28
+    },
+    "research-gate-timeout": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ],
+      [
+       "claude",
+       "claude-opus-5-5",
+       "ok"
+      ],
+      [
+       "agy",
+       null,
+       "ok"
+      ]
+     ],
+     "seconds": 74
+    },
+    "review-idle-age": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ],
+      [
+       "claude",
+       "claude-opus-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 48
+    },
+    "review-event-retry": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 31
+    },
+    "refactor-suite-key": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 42
+    },
+    "refactor-request-headers": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6-luna",
+       "ok"
+      ]
+     ],
+     "seconds": 41
+    },
+    "plan-budget-guard": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 37
+    },
+    "plan-unpriced": {
+     "pass": true,
+     "attempts": [
+      [
+       "claude",
+       "claude-sonnet-5-5",
+       "ok"
+      ]
+     ],
+     "seconds": 17
+    },
+    "ops-runner-workflow": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 28
+    },
+    "ops-dockerignore": {
+     "pass": true,
+     "attempts": [
+      [
+       "codex",
+       "gpt-6.1-sol",
+       "ok"
+      ]
+     ],
+     "seconds": 23
+    }
+   },
+   "tokens": {
+    "codex": 1890197,
+    "claude": 1252521,
+    "agy": 16968
+   },
+   "cost_usd": {
+    "codex": 0.17,
+    "claude": 1.03
+   },
+   "attempts": 23,
+   "first_pass": 18,
+   "retried": 2,
+   "rescued": 2,
+   "rescued_by": {
+    "agy": 1,
+    "claude": 1
+   },
+   "cost_total_usd": 1.2,
+   "passed": 20,
+   "claude_week": [
+    81,
+    81
+   ],
+   "codex_week": [
+    36,
+    36
+   ]
+  }
+ ],
+ "plain": [
+  {
+   "arm": "plain",
+   "repeat": 1,
+   "wall_s": 312,
+   "gate_s": 48,
+   "status": "ok",
+   "model": "claude-opus-5-5",
+   "turns": 78,
+   "tool_calls": 77,
+   "tools": {
+    "Bash": 11,
+    "Read": 33,
+    "Edit": 16,
+    "Grep": 1,
+    "Write": 15,
+    "PowerShell": 1
+   },
+   "denials": 5,
+   "cost_usd": 1.9981712,
+   "tokens": {
+    "claude": 2670232
+   },
+   "tokens_split": {
+    "input": 60,
+    "cache_read": 2532896,
+    "cache_write": 104514,
+    "output": 32762
+   },
+   "model_usage": {
+    "claude-opus-5-5": {
+     "inputTokens": 60,
+     "outputTokens": 32762,
+     "cacheReadInputTokens": 2532896,
+     "cacheCreationInputTokens": 104514,
+     "webSearchRequests": 0,
+     "costUSD": 1.9981712,
+     "contextWindow": 1000000,
+     "maxOutputTokens": 128000,
+     "thinkingTokens": 8833,
+     "canonicalModel": "claude-opus-5-5",
+     "provider": "firstParty",
+     "costBasis": "list"
+    }
+   },
+   "tasks": {
+    "implement-variant-name": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-event-line-limit": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-estimate-mark": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-shown-path": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-system32-case": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-idle-zero": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-quoted-path": {
+     "pass": true,
+     "why": ""
+    },
+    "test-moved-cache": {
+     "pass": true,
+     "why": ""
+    },
+    "test-path-separator": {
+     "pass": true,
+     "why": ""
+    },
+    "test-cell-escape": {
+     "pass": true,
+     "why": ""
+    },
+    "research-eval-expand": {
+     "pass": true,
+     "why": ""
+    },
+    "research-gate-timeout": {
+     "pass": true,
+     "why": ""
+    },
+    "review-idle-age": {
+     "pass": true,
+     "why": ""
+    },
+    "review-event-retry": {
+     "pass": true,
+     "why": ""
+    },
+    "refactor-suite-key": {
+     "pass": true,
+     "why": ""
+    },
+    "refactor-request-headers": {
+     "pass": true,
+     "why": ""
+    },
+    "plan-budget-guard": {
+     "pass": true,
+     "why": ""
+    },
+    "plan-unpriced": {
+     "pass": true,
+     "why": ""
+    },
+    "ops-runner-workflow": {
+     "pass": true,
+     "why": ""
+    },
+    "ops-dockerignore": {
+     "pass": true,
+     "why": ""
+    }
+   },
+   "passed": 20,
+   "claude_week": [
+    82,
+    82
+   ],
+   "codex_week": [
+    37,
+    36
+   ]
+  },
+  {
+   "arm": "plain",
+   "repeat": 2,
+   "wall_s": 285,
+   "gate_s": 48,
+   "status": "ok",
+   "model": "claude-opus-5-5",
+   "turns": 73,
+   "tool_calls": 72,
+   "tools": {
+    "Bash": 10,
+    "Glob": 1,
+    "Read": 33,
+    "Write": 17,
+    "Edit": 10,
+    "PowerShell": 1
+   },
+   "denials": 5,
+   "cost_usd": 1.9199377999999996,
+   "tokens": {
+    "claude": 2724298
+   },
+   "tokens_split": {
+    "input": 60,
+    "cache_read": 2594649,
+    "cache_write": 99251,
+    "output": 30338
+   },
+   "model_usage": {
+    "claude-opus-5-5": {
+     "inputTokens": 60,
+     "outputTokens": 30338,
+     "cacheReadInputTokens": 2594649,
+     "cacheCreationInputTokens": 99251,
+     "webSearchRequests": 0,
+     "costUSD": 1.9199377999999996,
+     "contextWindow": 1000000,
+     "maxOutputTokens": 128000,
+     "thinkingTokens": 5524,
+     "canonicalModel": "claude-opus-5-5",
+     "provider": "firstParty",
+     "costBasis": "list"
+    }
+   },
+   "tasks": {
+    "implement-variant-name": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-event-line-limit": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-estimate-mark": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-shown-path": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-system32-case": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-idle-zero": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-quoted-path": {
+     "pass": true,
+     "why": ""
+    },
+    "test-moved-cache": {
+     "pass": true,
+     "why": ""
+    },
+    "test-path-separator": {
+     "pass": true,
+     "why": ""
+    },
+    "test-cell-escape": {
+     "pass": true,
+     "why": ""
+    },
+    "research-eval-expand": {
+     "pass": true,
+     "why": ""
+    },
+    "research-gate-timeout": {
+     "pass": true,
+     "why": ""
+    },
+    "review-idle-age": {
+     "pass": true,
+     "why": ""
+    },
+    "review-event-retry": {
+     "pass": true,
+     "why": ""
+    },
+    "refactor-suite-key": {
+     "pass": true,
+     "why": ""
+    },
+    "refactor-request-headers": {
+     "pass": true,
+     "why": ""
+    },
+    "plan-budget-guard": {
+     "pass": true,
+     "why": ""
+    },
+    "plan-unpriced": {
+     "pass": true,
+     "why": ""
+    },
+    "ops-runner-workflow": {
+     "pass": true,
+     "why": ""
+    },
+    "ops-dockerignore": {
+     "pass": true,
+     "why": ""
+    }
+   },
+   "passed": 20,
+   "claude_week": [
+    82,
+    82
+   ],
+   "codex_week": [
+    36,
+    36
+   ]
+  },
+  {
+   "arm": "plain",
+   "repeat": 3,
+   "wall_s": 319,
+   "gate_s": 47,
+   "status": "ok",
+   "model": "claude-opus-5-5",
+   "turns": 80,
+   "tool_calls": 79,
+   "tools": {
+    "Bash": 5,
+    "Read": 33,
+    "Write": 17,
+    "Edit": 13,
+    "PowerShell": 11
+   },
+   "denials": 12,
+   "cost_usd": 2.0801583999999997,
+   "tokens": {
+    "claude": 3132437
+   },
+   "tokens_split": {
+    "input": 66,
+    "cache_read": 2997672,
+    "cache_write": 101135,
+    "output": 33564
+   },
+   "model_usage": {
+    "claude-opus-5-5": {
+     "inputTokens": 66,
+     "outputTokens": 33564,
+     "cacheReadInputTokens": 2997672,
+     "cacheCreationInputTokens": 101135,
+     "webSearchRequests": 0,
+     "costUSD": 2.0801583999999997,
+     "contextWindow": 1000000,
+     "maxOutputTokens": 128000,
+     "thinkingTokens": 8351,
+     "canonicalModel": "claude-opus-5-5",
+     "provider": "firstParty",
+     "costBasis": "list"
+    }
+   },
+   "tasks": {
+    "implement-variant-name": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-event-line-limit": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-estimate-mark": {
+     "pass": true,
+     "why": ""
+    },
+    "implement-shown-path": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-system32-case": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-idle-zero": {
+     "pass": true,
+     "why": ""
+    },
+    "debug-quoted-path": {
+     "pass": true,
+     "why": ""
+    },
+    "test-moved-cache": {
+     "pass": true,
+     "why": ""
+    },
+    "test-path-separator": {
+     "pass": true,
+     "why": ""
+    },
+    "test-cell-escape": {
+     "pass": true,
+     "why": ""
+    },
+    "research-eval-expand": {
+     "pass": true,
+     "why": ""
+    },
+    "research-gate-timeout": {
+     "pass": true,
+     "why": ""
+    },
+    "review-idle-age": {
+     "pass": true,
+     "why": ""
+    },
+    "review-event-retry": {
+     "pass": true,
+     "why": ""
+    },
+    "refactor-suite-key": {
+     "pass": true,
+     "why": ""
+    },
+    "refactor-request-headers": {
+     "pass": true,
+     "why": ""
+    },
+    "plan-budget-guard": {
+     "pass": false,
+     "why": "too long: 422 words"
+    },
+    "plan-unpriced": {
+     "pass": true,
+     "why": ""
+    },
+    "ops-runner-workflow": {
+     "pass": true,
+     "why": ""
+    },
+    "ops-dockerignore": {
+     "pass": true,
+     "why": ""
+    }
+   },
+   "passed": 19,
+   "claude_week": [
+    81,
+    81
+   ],
+   "codex_week": [
+    36,
+    36
+   ]
+  }
+ ],
+ "details": {
+  "routed": [
+   {
+    "repeat": 1,
+    "first_attempts": {
+     "runs": 20,
+     "tokens": 2829413,
+     "cost_usd": 0.88,
+     "runs_with_cost": 20,
+     "agent_seconds": 619,
+     "runs_naming_a_check_file": 6
+    },
+    "retries": {
+     "runs": 4,
+     "tokens": 615936,
+     "cost_usd": 2.01,
+     "runs_with_cost": 4,
+     "agent_seconds": 280,
+     "runs_naming_a_check_file": 1
+    },
+    "by_model": {
+     "codex gpt-6-luna": {
+      "runs": 11,
+      "tokens": 1692116,
+      "cost_usd": 0.05,
+      "runs_with_cost": 11,
+      "estimate": true
+     },
+     "claude claude-fable-5-1 (retry)": {
+      "runs": 1,
+      "tokens": 303464,
+      "cost_usd": 1.11,
+      "runs_with_cost": 1,
+      "estimate": false
+     },
+     "claude claude-sonnet-5-5": {
+      "runs": 5,
+      "tokens": 783714,
+      "cost_usd": 0.69,
+      "runs_with_cost": 5,
+      "estimate": false
+     },
+     "claude claude-opus-5-5 (retry)": {
+      "runs": 1,
+      "tokens": 157722,
+      "cost_usd": 0.39,
+      "runs_with_cost": 1,
+      "estimate": false
+     },
+     "codex gpt-6.1-sol": {
+      "runs": 4,
+      "tokens": 353583,
+      "cost_usd": 0.15,
+      "runs_with_cost": 4,
+      "estimate": true
+     },
+     "codex gpt-6-astra (retry)": {
+      "runs": 2,
+      "tokens": 154750,
+      "cost_usd": 0.51,
+      "runs_with_cost": 2,
+      "estimate": true
+     }
+    },
+    "retry_list": [
+     {
+      "task": "implement-estimate-mark",
+      "attempt": 2,
+      "after": "codex gpt-6-luna",
+      "after_failed_with": "Cost does not format the cells as asked",
+      "on": "claude claude-fable-5-1",
+      "gate_pass": true
+     },
+     {
+      "task": "research-eval-expand",
+      "attempt": 2,
+      "after": "codex gpt-6-luna",
+      "after_failed_with": "answer 1 does not say each cell runs once",
+      "on": "claude claude-opus-5-5",
+      "gate_pass": true
+     },
+     {
+      "task": "plan-budget-guard",
+      "attempt": 2,
+      "after": "claude claude-sonnet-5-5",
+      "after_failed_with": "too long: 435 words",
+      "on": "codex gpt-6-astra",
+      "gate_pass": true
+     },
+     {
+      "task": "plan-unpriced",
+      "attempt": 2,
+      "after": "claude claude-sonnet-5-5",
+      "after_failed_with": "too long: 333 words",
+      "on": "codex gpt-6-astra",
+      "gate_pass": true
+     }
+    ]
+   },
+   {
+    "repeat": 2,
+    "first_attempts": {
+     "runs": 20,
+     "tokens": 3044641,
+     "cost_usd": 0.9,
+     "runs_with_cost": 20,
+     "agent_seconds": 615,
+     "runs_naming_a_check_file": 8
+    },
+    "retries": {
+     "runs": 2,
+     "tokens": 314097,
+     "cost_usd": 0.42,
+     "runs_with_cost": 2,
+     "agent_seconds": 60,
+     "runs_naming_a_check_file": 0
+    },
+    "by_model": {
+     "codex gpt-6-luna": {
+      "runs": 11,
+      "tokens": 1650844,
+      "cost_usd": 0.04,
+      "runs_with_cost": 11,
+      "estimate": true
+     },
+     "claude claude-sonnet-5-5": {
+      "runs": 5,
+      "tokens": 985051,
+      "cost_usd": 0.67,
+      "runs_with_cost": 5,
+      "estimate": false
+     },
+     "claude claude-opus-5-5 (retry)": {
+      "runs": 2,
+      "tokens": 314097,
+      "cost_usd": 0.42,
+      "runs_with_cost": 2,
+      "estimate": false
+     },
+     "codex gpt-6.1-sol": {
+      "runs": 4,
+      "tokens": 408746,
+      "cost_usd": 0.18,
+      "runs_with_cost": 4,
+      "estimate": true
+     }
+    },
+    "retry_list": [
+     {
+      "task": "research-eval-expand",
+      "attempt": 2,
+      "after": "codex gpt-6-luna",
+      "after_failed_with": "answer 1 does not say each cell runs once",
+      "on": "claude claude-opus-5-5",
+      "gate_pass": true
+     },
+     {
+      "task": "research-gate-timeout",
+      "attempt": 2,
+      "after": "codex gpt-6-luna",
+      "after_failed_with": "answer 1 does not say 15 minutes",
+      "on": "claude claude-opus-5-5",
+      "gate_pass": true
+     }
+    ]
+   },
+   {
+    "repeat": 3,
+    "first_attempts": {
+     "runs": 20,
+     "tokens": 2788654,
+     "cost_usd": 0.79,
+     "runs_with_cost": 20,
+     "agent_seconds": 546,
+     "runs_naming_a_check_file": 5
+    },
+    "retries": {
+     "runs": 3,
+     "tokens": 371032,
+     "cost_usd": 0.41,
+     "runs_with_cost": 2,
+     "agent_seconds": 80,
+     "runs_naming_a_check_file": 0
+    },
+    "by_model": {
+     "codex gpt-6-luna": {
+      "runs": 11,
+      "tokens": 1536690,
+      "cost_usd": 0.04,
+      "runs_with_cost": 11,
+      "estimate": true
+     },
+     "claude claude-sonnet-5-5": {
+      "runs": 5,
+      "tokens": 898457,
+      "cost_usd": 0.62,
+      "runs_with_cost": 5,
+      "estimate": false
+     },
+     "claude claude-opus-5-5 (retry)": {
+      "runs": 2,
+      "tokens": 354064,
+      "cost_usd": 0.41,
+      "runs_with_cost": 2,
+      "estimate": false
+     },
+     "agy model unreported (retry)": {
+      "runs": 1,
+      "tokens": 16968,
+      "cost_usd": null,
+      "runs_with_cost": 0,
+      "estimate": false
+     },
+     "codex gpt-6.1-sol": {
+      "runs": 4,
+      "tokens": 353507,
+      "cost_usd": 0.13,
+      "runs_with_cost": 4,
+      "estimate": true
+     }
+    },
+    "retry_list": [
+     {
+      "task": "research-gate-timeout",
+      "attempt": 2,
+      "after": "codex gpt-6-luna",
+      "after_failed_with": "fixtures/real/research/ANSWERS-BATCH.md is missing or empty",
+      "on": "claude claude-opus-5-5",
+      "gate_pass": false
+     },
+     {
+      "task": "research-gate-timeout",
+      "attempt": 3,
+      "after": "claude claude-opus-5-5",
+      "after_failed_with": "answer 3 does not say the task wins",
+      "on": "agy model unreported",
+      "gate_pass": true
+     },
+     {
+      "task": "review-idle-age",
+      "attempt": 2,
+      "after": "codex gpt-6.1-sol",
+      "after_failed_with": "the review does not find the same negative age at line 31",
+      "on": "claude claude-opus-5-5",
+      "gate_pass": true
+     }
+    ]
+   }
+  ],
+  "plain": [
+   {
+    "repeat": 1,
+    "tool_calls_naming_a_check_file": 14,
+    "by_tool": {
+     "Bash": 4,
+     "Read": 9,
+     "PowerShell": 1
+    },
+    "loaded_at_start": {
+     "tools": 250,
+     "mcp_servers": 94,
+     "skills": 279
+    }
+   },
+   {
+    "repeat": 2,
+    "tool_calls_naming_a_check_file": 12,
+    "by_tool": {
+     "Read": 9,
+     "Bash": 2,
+     "PowerShell": 1
+    },
+    "loaded_at_start": {
+     "tools": 208,
+     "mcp_servers": 94,
+     "skills": 279
+    }
+   },
+   {
+    "repeat": 3,
+    "tool_calls_naming_a_check_file": 15,
+    "by_tool": {
+     "Bash": 2,
+     "Read": 9,
+     "PowerShell": 3,
+     "Write": 1
+    },
+    "loaded_at_start": {
+     "tools": 281,
+     "mcp_servers": 94,
+     "skills": 279
+    }
+   }
+  ]
+ }
+}
