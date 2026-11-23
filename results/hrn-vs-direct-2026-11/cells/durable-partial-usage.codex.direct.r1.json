@@ -1,0 +1,52 @@
+{
+ "cell": "durable-partial-usage.codex.direct.r1",
+ "task": "durable-partial-usage",
+ "backend": "codex",
+ "arm": "direct",
+ "repeat": 1,
+ "base": "10107b0354b6c23c153dc71e54c5c0383d5680fd",
+ "started": "2026-11-07T15:22:05+02:00",
+ "notes": [
+  "codex exec reports no cost"
+ ],
+ "tokens": {
+  "input": 1134407,
+  "cache_read": 1109376,
+  "cache_write": 0,
+  "output": 4115
+ },
+ "status": "ok",
+ "command": [
+  "codex",
+  "exec",
+  "--json",
+  "--skip-git-repo-check",
+  "-C",
+  "<wt>",
+  "--dangerously-bypass-approvals-and-sandbox",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 207.1,
+ "timed_out": false,
+ "usage_status": "reported",
+ "turns": 1,
+ "tool_calls": 18,
+ "cost_usd": null,
+ "agent_committed": false,
+ "changed_files": [
+  "docs/run-records.md",
+  "internal/agent/api.go",
+  "internal/agent/durable_test.go"
+ ],
+ "patch_bytes": 4158,
+ "gate_pass": true,
+ "gate_s": 16.6,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/agent\t14.497s"
+ ],
+ "finished": "2026-11-07T15:25:49+02:00",
+ "model": "gpt-6.1-terra",
+ "cli_version": "0.166.0-alpha.6",
+ "stderr_line_count": 0
+}

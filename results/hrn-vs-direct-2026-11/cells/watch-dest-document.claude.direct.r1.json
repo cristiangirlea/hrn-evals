@@ -1,0 +1,49 @@
+{
+ "cell": "watch-dest-document.claude.direct.r1",
+ "task": "watch-dest-document",
+ "backend": "claude",
+ "arm": "direct",
+ "repeat": 1,
+ "base": "d33b29e61d8eee163a13160752d9203d3633ee0d",
+ "started": "2026-11-07T15:40:58+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 24,
+  "cache_read": 698510,
+  "cache_write": 53806,
+  "output": 6829
+ },
+ "status": "ok",
+ "command": [
+  "claude",
+  "-p",
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--permission-mode",
+  "bypassPermissions"
+ ],
+ "exit_code": 0,
+ "wall_s": 121.6,
+ "timed_out": false,
+ "turns": 19,
+ "tokens_source": "result line",
+ "cost_usd": 0.706826,
+ "cost_estimate": false,
+ "agent_duration_s": 117.2,
+ "model": "claude-opus-5-5",
+ "agent_committed": false,
+ "changed_files": [
+  "docs/watch.md",
+  "internal/watch/access_test.go",
+  "internal/watch/server.go"
+ ],
+ "patch_bytes": 7413,
+ "gate_pass": true,
+ "gate_s": 9.5,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/watch\t6.681s"
+ ],
+ "finished": "2026-11-07T15:43:10+02:00",
+ "stderr_line_count": 1
+}

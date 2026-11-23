@@ -1,0 +1,53 @@
+{
+ "cell": "watch-quoted-path.claude.direct.r2",
+ "task": "watch-quoted-path",
+ "backend": "claude",
+ "arm": "direct",
+ "repeat": 2,
+ "base": "8610318375f4e04e1f67a444181a6e5c1148b45d",
+ "started": "2026-11-07T16:33:48+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 14,
+  "cache_read": 387130,
+  "cache_write": 55029,
+  "output": 9560
+ },
+ "status": "ok",
+ "command": [
+  "claude",
+  "-p",
+  "--output-format",
+  "stream-json",
+  "--verbose",
+  "--permission-mode",
+  "bypassPermissions"
+ ],
+ "exit_code": 0,
+ "wall_s": 411.8,
+ "timed_out": false,
+ "turns": 11,
+ "tokens_source": "result line",
+ "cost_usd": 0.7089139999999999,
+ "cost_estimate": false,
+ "agent_duration_s": 407.8,
+ "model": "claude-opus-5-5",
+ "agent_committed": false,
+ "changed_files": [
+  "internal/watch/paths.go",
+  "internal/watch/paths_test.go"
+ ],
+ "patch_bytes": 3913,
+ "gate_pass": false,
+ "gate_s": 12.1,
+ "gate_tail": [
+  "    paths_test.go:65: shorten(\"[\\\"'C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\cmd.exe\\\\\\\\\\\",1.5]\")",
+  "         got \"[\\\"'C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\cmd.exe\\\\\\\\\\\",1.5]\"",
+  "        want \"[\\\"'cmd.exe\\\\\\\\\\\",1.5]\"",
+  "FAIL",
+  "FAIL\tgithub.com/cristiangirlea/harness/internal/watch\t10.248s",
+  "FAIL"
+ ],
+ "finished": "2026-11-07T16:40:52+02:00",
+ "stderr_line_count": 1
+}

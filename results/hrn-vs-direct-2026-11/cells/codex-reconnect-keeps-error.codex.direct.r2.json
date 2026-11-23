@@ -1,0 +1,51 @@
+{
+ "cell": "codex-reconnect-keeps-error.codex.direct.r2",
+ "task": "codex-reconnect-keeps-error",
+ "backend": "codex",
+ "arm": "direct",
+ "repeat": 2,
+ "base": "804f6ca754b5545db828173d11d9016d5f8b3788",
+ "started": "2026-11-07T15:09:55+02:00",
+ "notes": [
+  "codex exec reports no cost"
+ ],
+ "tokens": {
+  "input": 488313,
+  "cache_read": 473344,
+  "cache_write": 0,
+  "output": 2312
+ },
+ "status": "ok",
+ "command": [
+  "codex",
+  "exec",
+  "--json",
+  "--skip-git-repo-check",
+  "-C",
+  "<wt>",
+  "--dangerously-bypass-approvals-and-sandbox",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 255.8,
+ "timed_out": false,
+ "usage_status": "reported",
+ "turns": 1,
+ "tool_calls": 9,
+ "cost_usd": null,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/agent/codex.go",
+  "internal/agent/session_test.go"
+ ],
+ "patch_bytes": 2277,
+ "gate_pass": true,
+ "gate_s": 20.4,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/agent\t18.186s"
+ ],
+ "finished": "2026-11-07T15:14:32+02:00",
+ "model": "gpt-6.1-terra",
+ "cli_version": "0.166.0-alpha.6",
+ "stderr_line_count": 0
+}

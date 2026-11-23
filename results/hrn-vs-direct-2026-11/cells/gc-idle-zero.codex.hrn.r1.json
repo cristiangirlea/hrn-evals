@@ -1,0 +1,65 @@
+{
+ "cell": "gc-idle-zero.codex.hrn.r1",
+ "task": "gc-idle-zero",
+ "backend": "codex",
+ "arm": "hrn",
+ "repeat": 1,
+ "base": "3a23bf78acf272781ee24f7c4a949647fc181b41",
+ "started": "2026-11-07T13:54:11+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 826983,
+  "cache_read": 794880,
+  "cache_write": 0,
+  "output": 2865
+ },
+ "status": "ok",
+ "command": [
+  "hrn",
+  "run",
+  "-b",
+  "codex",
+  "--mode",
+  "yolo",
+  "--dir",
+  "<wt>",
+  "--timeout",
+  "15m",
+  "--no-switch",
+  "--json",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 143.1,
+ "timed_out": false,
+ "hrn_run_id": "20261107-135411-5f3d89",
+ "turns": 1,
+ "tool_calls": 13,
+ "model": "gpt-6.1-terra",
+ "usage_status": "reported",
+ "cost_usd": null,
+ "cost_estimate": null,
+ "agent_duration_s": 142.4,
+ "refusal_flags": 0,
+ "event_kinds": {
+  "info": 3,
+  "session": 1,
+  "text": 5,
+  "tool_call": 13,
+  "tool_result": 13
+ },
+ "guard_refusals_seen": 0,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/gc/cache.go",
+  "internal/gc/cache_test.go"
+ ],
+ "patch_bytes": 3498,
+ "gate_pass": true,
+ "gate_s": 555.3,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/gc\t552.277s"
+ ],
+ "finished": "2026-11-07T14:05:50+02:00",
+ "stderr_line_count": 0
+}

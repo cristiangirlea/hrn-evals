@@ -1,0 +1,68 @@
+{
+ "cell": "gc-idle-zero.claude.hrn.r1",
+ "task": "gc-idle-zero",
+ "backend": "claude",
+ "arm": "hrn",
+ "repeat": 1,
+ "base": "3a23bf78acf272781ee24f7c4a949647fc181b41",
+ "started": "2026-11-07T14:43:30+02:00",
+ "notes": [],
+ "tokens": {
+  "input": 20,
+  "cache_read": 425991,
+  "cache_write": 27143,
+  "output": 3884
+ },
+ "status": "ok",
+ "command": [
+  "hrn",
+  "run",
+  "-b",
+  "claude",
+  "--mode",
+  "yolo",
+  "--dir",
+  "<wt>",
+  "--timeout",
+  "15m",
+  "--no-switch",
+  "--json",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 239.6,
+ "timed_out": false,
+ "hrn_run_id": "20261107-144330-eb7f4b",
+ "turns": 10,
+ "tool_calls": 9,
+ "model": "claude-opus-5-5",
+ "usage_status": null,
+ "cost_usd": 0.3801022,
+ "cost_estimate": null,
+ "agent_duration_s": 239.2,
+ "refusal_flags": 0,
+ "event_kinds": {
+  "info": 3,
+  "session": 1,
+  "tool_call": 9,
+  "usage": 10,
+  "quota": 2,
+  "tool_result": 9,
+  "thinking": 1,
+  "text": 4
+ },
+ "guard_refusals_seen": 0,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/gc/cache.go",
+  "internal/gc/cache_test.go"
+ ],
+ "patch_bytes": 3410,
+ "gate_pass": true,
+ "gate_s": 219.2,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/gc\t216.912s"
+ ],
+ "finished": "2026-11-07T14:51:09+02:00",
+ "stderr_line_count": 0
+}

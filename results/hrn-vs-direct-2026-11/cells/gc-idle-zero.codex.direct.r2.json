@@ -1,0 +1,51 @@
+{
+ "cell": "gc-idle-zero.codex.direct.r2",
+ "task": "gc-idle-zero",
+ "backend": "codex",
+ "arm": "direct",
+ "repeat": 2,
+ "base": "3a23bf78acf272781ee24f7c4a949647fc181b41",
+ "started": "2026-11-07T14:11:16+02:00",
+ "notes": [
+  "codex exec reports no cost"
+ ],
+ "tokens": {
+  "input": 1193696,
+  "cache_read": 1159552,
+  "cache_write": 0,
+  "output": 3430
+ },
+ "status": "ok",
+ "command": [
+  "codex",
+  "exec",
+  "--json",
+  "--skip-git-repo-check",
+  "-C",
+  "<wt>",
+  "--dangerously-bypass-approvals-and-sandbox",
+  "-"
+ ],
+ "exit_code": 0,
+ "wall_s": 227.9,
+ "timed_out": false,
+ "usage_status": "reported",
+ "turns": 1,
+ "tool_calls": 15,
+ "cost_usd": null,
+ "agent_committed": false,
+ "changed_files": [
+  "internal/gc/cache.go",
+  "internal/gc/cache_test.go"
+ ],
+ "patch_bytes": 3002,
+ "gate_pass": true,
+ "gate_s": 456.6,
+ "gate_tail": [
+  "ok  \tgithub.com/cristiangirlea/harness/internal/gc\t454.445s"
+ ],
+ "finished": "2026-11-07T14:22:42+02:00",
+ "model": "gpt-6.1-terra",
+ "cli_version": "0.166.0-alpha.6",
+ "stderr_line_count": 0
+}
