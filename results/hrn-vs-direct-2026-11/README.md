@@ -133,7 +133,10 @@ published:
 | durable-partial-usage | 149 | `TestDurableFailedStreamKeepsPartialUsage` fails | passes |
 | privacy-check-dedupe | 648 | `TestTheRunReportsEachFindingOnceInAConflictedFile` fails | passes |
 
-`ageAt` is the helper the `gc-idle-zero` prompt names. `validate.log` also lists four more
+`ageAt` is the helper the `gc-idle-zero` prompt names. `validate-2026-11-23.log` is a second run
+of the eight with the validator as it is now, which first runs the commit before the fix with
+its own tests: all eight pass there, fail with the copied tests in the same way as in the
+table, and pass at the merge. `validate.log` also lists four more
 candidates (issues 429, 607, 348 and 122) that passed the same check and were not used: the
 comparison was sized for eight tasks, and `tasks.json` was fixed ten minutes before the first run.
 `fixtures.sha256` has the SHA-256 of each hidden test file at its merge commit.
@@ -142,8 +145,9 @@ comparison was sized for eight tasks, and `tasks.json` was fixed ten minutes bef
 
 - Design and runs: `design.md` (with a closing section on where the run departed from it),
   `tasks.json`, `prompts/` and `scripts/`.
-- `scripts/runner.py` and `scripts/validate-gates.sh` are as they ran; `design.md` lists their
-  known weaknesses. `scripts/publish.py` and `scripts/aggregate.py` were reworked for this page:
+- The scripts were changed after the run: weaknesses found in review are closed in
+  `scripts/runner.py` and `scripts/validate-gates.sh` (`design.md`, "The scripts after the run",
+  lists each), and `scripts/publish.py` and `scripts/aggregate.py` were reworked for this page:
   `publish.py` writes `cells/` and `plan-readings.txt` from the runner's records through a list
   of allowed fields, and `python scripts/aggregate.py cells` rebuilds `results.md` from `cells/`.
 - hrn 0.2.0 at harness `dc7179d`; the harness clone at main `9dcee21`; Claude Code 2.1.284; Codex

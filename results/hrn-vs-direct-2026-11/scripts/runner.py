@@ -38,17 +38,46 @@ AGENT_TIMEOUT = 15 * 60
 GATE_TIMEOUT = 15 * 60
 TMPDIR = os.environ.get("HRN_VS_DIRECT_TMP", r"E:\hrn-vd-tmp")
 
-TASKS = {t["id"]: t for t in json.load(open(os.path.join(HERE, "tasks.json"), encoding="utf-8"))["tasks"]}
+# tasks.json sits beside the scripts folder in the published layout, beside the script in a scratch copy.
+TASKS_FILE = next((p for p in (os.path.join(HERE, "tasks.json"), os.path.join(os.path.dirname(HERE), "tasks.json")) if os.path.exists(p)), None)
+if TASKS_FILE is None:
+    sys.exit("no tasks.json beside runner.py or one folder up")
+TASKS ={t["id"]: t for t in json.load(open(TASKS_FILE, encoding="utf-8"))["tasks"]}
 
 
 def git(*args, cwd=BASE, check=True):
     return subprocess.run(["git", *args], cwd=cwd, check=check, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
+API_KEYS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "OPENAI_API_KEY", "CODEX_API_KEY")
+
+
 def base_env():
-    env = dict(os.environ)
+    # No arm may bill per token: a key in the caller's environment never reaches an agent.
+    env = {k: v for k, v in os.environ.items() if k.upper() not in API_KEYS}
     env["TMP"] = env["TEMP"] = TMPDIR
     return env
+
+
+def write_json(path, obj):
+    # Through a temporary file of its own, so a stopped run or a second writer never leaves half a record.
+    import tempfile
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=os.path.basename(path) + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(obj, f, indent=1)
+        for attempt in range(50):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:  # Windows: another writer holds the target for a moment
+                if attempt == 49:
+                    raise
+                time.sleep(0.05)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
 
 
 def direct_env():
@@ -123,7 +152,8 @@ def parse_hrn(stdout_path, stderr_path, cell):
     }
     cell["usage_status"] = (r.get("usage_metadata") or {}).get("status")
     cell["cost_usd"] = r.get("cost_usd")
-    cell["cost_estimate"] = r.get("cost_estimate")
+    # hrn leaves the flag out when the cost is the provider's own figure.
+    cell["cost_estimate"] = bool(r.get("cost_is_estimate")) if r.get("cost_usd") is not None else None
     cell["agent_duration_s"] = round((r.get("duration_ns") or 0) / 1e9, 1)
     cell["refusal_flags"] = len(r.get("refusal_flags") or [])
     cell["final"] = (r.get("final") or "")[:500]
@@ -376,8 +406,7 @@ def run_cell(task_id, backend, arm, repeat):
     cell["gate_tail"] = tail
     cell["finished"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     worktree_remove(wt)
-    with open(cell_path, "w", encoding="utf-8") as f:
-        json.dump(cell, f, indent=1)
+    write_json(cell_path, cell)
     print(f"{cell_id}: status={cell['status']} gate={'pass' if passed else 'FAIL'} wall={cell['wall_s']}s "
           f"tokens={cell['tokens']} model={cell.get('model')} err={cell['error'][:80]!r}", flush=True)
     return cell
@@ -400,6 +429,23 @@ def plan_left(backend):
 
 def lane(backend, task_ids):
     os.makedirs(OUT, exist_ok=True)
+    # One lane per backend: two would share worktrees and records.
+    lock = os.path.join(OUT, f"lane-{backend}.lock")
+    try:
+        fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        sys.exit(f"{backend} lane: {lock} exists; another lane is running, or one was killed (then delete the file)")
+    try:
+        try:
+            os.write(fd, str(os.getpid()).encode())
+        finally:
+            os.close(fd)
+        run_lane(backend, task_ids)
+    finally:
+        os.remove(lock)
+
+
+def run_lane(backend, task_ids):
     left = plan_left(backend)
     print(f"{backend} lane: {left}% of the week left", flush=True)
     if left is not None and left < PLAN_FLOOR[backend]:
@@ -468,15 +514,13 @@ def recount(cells_dir):
                 c["tokens_source"] = f"usage events ({calls} model calls; the run was killed before totals)"
                 changed = True
         if changed:
-            json.dump(c, open(p, "w", encoding="utf-8"), indent=1)
+            write_json(p, c)
             print(p, "guard_refusals_seen", n, "tokens", c.get("tokens"))
 
 
 def codex_models(cells_dir):
     """Fill the model of direct codex cells from codex's rollout file, as hrn does for its own runs."""
     import glob
-    import re
-    from collections import Counter
     home = os.environ.get("CODEX_HOME") or os.path.join(os.path.expanduser("~"), ".codex")
     for p in glob.glob(os.path.join(cells_dir, "*.codex.direct.*.json")):
         c = json.load(open(p, encoding="utf-8"))
@@ -486,14 +530,36 @@ def codex_models(cells_dir):
         files = glob.glob(os.path.join(home, "sessions", "*", "*", "*", f"rollout-*-{session}.jsonl"))
         if not files:
             continue
-        text = open(files[0], encoding="utf-8", errors="replace").read()
-        models = Counter(re.findall(r'"model":"([^"]+)"', text))
-        version = re.search(r'"cli_version":"([^"]+)"', text)
+        models, version = rollout_models(files[0])
         if models:
             c["model"] = models.most_common(1)[0][0]
-            c["cli_version"] = version.group(1) if version else None
-            json.dump(c, open(p, "w", encoding="utf-8"), indent=1)
-            print(p, "model ->", c["model"])
+            if len(models) > 1:
+                c["notes"].append("codex named several models in its turns: " + ", ".join(sorted(models)))
+        if version:
+            c["cli_version"] = version
+        if models or version:
+            write_json(p, c)
+            print(p, "model ->", c.get("model"), "cli ->", c.get("cli_version"))
+
+
+def rollout_models(path):
+    """The model of each turn (turn_context) and the CLI version (session_meta) in a codex rollout file."""
+    from collections import Counter
+    models, version = Counter(), None
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            payload = event.get("payload") if isinstance(event, dict) else None
+            if not isinstance(payload, dict):
+                continue
+            if event.get("type") == "turn_context" and payload.get("model"):
+                models[payload["model"]] += 1
+            if event.get("type") == "session_meta" and payload.get("cli_version"):
+                version = payload["cli_version"]
+    return models, version
 
 
 if __name__ == "__main__":
