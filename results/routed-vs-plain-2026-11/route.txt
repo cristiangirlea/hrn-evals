@@ -1,0 +1,10 @@
+purpose    backend  model        effort  eval   set
+debug      claude   sonnet       medium  7bd77  2026-10-19
+implement  codex    gpt-6-luna   low     7bd77  2026-10-19
+ops        codex    gpt-6.1-sol  medium  7bd77  2026-10-19
+plan       claude   sonnet       medium  7bd77  2026-10-19
+refactor   codex    gpt-6-luna   low     7bd77  2026-10-19
+research   codex    gpt-6-luna   low     7bd77  2026-10-19
+review     codex    gpt-6.1-sol  medium  7bd77  2026-10-19
+test       codex    gpt-6-luna   low     7bd77  2026-10-19
+unknown    codex    gpt-6-luna   low     fbc00  2026-10-18

@@ -1,0 +1,76 @@
+| arm | repeat | gates passed | wait | tokens | claude week left | codex week left |
+|---|---:|---:|---:|---|---|---|
+| routed | 1 | 20/20 | 5.6 min | claude 1.24M, codex 2.20M | 94% to 82% | 37% to 37% |
+| routed | 2 | 20/20 | 4.3 min | claude 1.30M, codex 2.06M | 82% to 81% | 36% to 36% |
+| routed | 3 | 20/20 | 4.0 min | agy 0.02M, claude 1.25M, codex 1.89M | 81% to 81% | 36% to 36% |
+| plain | 1 | 20/20 | 5.2 min (+0.8 scoring) | claude 2.67M | 82% to 82% | 37% to 36% |
+| plain | 2 | 20/20 | 4.8 min (+0.8 scoring) | claude 2.72M | 82% to 82% | 36% to 36% |
+| plain | 3 | 19/20 | 5.3 min (+0.8 scoring) | claude 3.13M | 81% to 81% | 36% to 36% |
+
+routed r1: batch 20261110-180332-964f73, 24 attempts, first-attempt passes 16, retried 4, passed after a retry 4 {'claude': 2, 'codex': 2}, cost {'codex': 0.71, 'claude': 2.19}
+routed r2: batch 20261110-182225-9fc1a5, 22 attempts, first-attempt passes 18, retried 2, passed after a retry 2 {'claude': 2}, cost {'codex': 0.22, 'claude': 1.09}
+routed r3: batch 20261110-182647-c30e69, 23 attempts, first-attempt passes 18, retried 2, passed after a retry 2 {'agy': 1, 'claude': 1}, cost {'codex': 0.17, 'claude': 1.03}
+plain r1: status ok, model claude-opus-5-5, turns 78, tool calls 77 {'Bash': 11, 'Read': 33, 'Edit': 16, 'Grep': 1, 'Write': 15, 'PowerShell': 1}, refused 5, cost 1.9981712, tokens {'input': 60, 'cache_read': 2532896, 'cache_write': 104514, 'output': 32762}
+plain r2: status ok, model claude-opus-5-5, turns 73, tool calls 72 {'Bash': 10, 'Glob': 1, 'Read': 33, 'Write': 17, 'Edit': 10, 'PowerShell': 1}, refused 5, cost 1.9199377999999996, tokens {'input': 60, 'cache_read': 2594649, 'cache_write': 99251, 'output': 30338}
+plain r3: status ok, model claude-opus-5-5, turns 80, tool calls 79 {'Bash': 5, 'Read': 33, 'Write': 17, 'Edit': 13, 'PowerShell': 11}, refused 12, cost 2.0801583999999997, tokens {'input': 66, 'cache_read': 2997672, 'cache_write': 101135, 'output': 33564}
+
+| task | routed | plain | routed attempts (last repeat) | plain failure (last seen) |
+|---|---:|---:|---|---|
+| implement-variant-name | 3/3 | 3/3 | codex:ok |  |
+| implement-event-line-limit | 3/3 | 3/3 | codex:ok |  |
+| implement-estimate-mark | 3/3 | 3/3 | codex:ok |  |
+| implement-shown-path | 3/3 | 3/3 | codex:ok |  |
+| debug-system32-case | 3/3 | 3/3 | claude:ok |  |
+| debug-idle-zero | 3/3 | 3/3 | claude:ok |  |
+| debug-quoted-path | 3/3 | 3/3 | claude:ok |  |
+| test-moved-cache | 3/3 | 3/3 | codex:ok |  |
+| test-path-separator | 3/3 | 3/3 | codex:ok |  |
+| test-cell-escape | 3/3 | 3/3 | codex:ok |  |
+| research-eval-expand | 3/3 | 3/3 | codex:ok |  |
+| research-gate-timeout | 3/3 | 3/3 | codex:ok; claude:ok; agy:ok |  |
+| review-idle-age | 3/3 | 3/3 | codex:ok; claude:ok |  |
+| review-event-retry | 3/3 | 3/3 | codex:ok |  |
+| refactor-suite-key | 3/3 | 3/3 | codex:ok |  |
+| refactor-request-headers | 3/3 | 3/3 | codex:ok |  |
+| plan-budget-guard | 3/3 | 2/3 | claude:ok | too long: 422 words |
+| plan-unpriced | 3/3 | 3/3 | claude:ok |  |
+| ops-runner-workflow | 3/3 | 3/3 | codex:ok |  |
+| ops-dockerignore | 3/3 | 3/3 | codex:ok |  |
+
+paired difference in pass rate, routed minus plain, mean over 20 tasks: +0.017 [+0.000, +0.050] (95% bootstrap over tasks, 10,000 resamples)
+routed r1 (20261110-180332-964f73):
+  retry implement-estimate-mark (attempt 2): codex gpt-6-luna failed with 'Cost does not format the cells as asked', then claude claude-fable-5-1: gate pass
+  retry research-eval-expand (attempt 2): codex gpt-6-luna failed with 'answer 1 does not say each cell runs once', then claude claude-opus-5-5: gate pass
+  retry plan-budget-guard (attempt 2): claude claude-sonnet-5-5 failed with 'too long: 435 words', then codex gpt-6-astra: gate pass
+  retry plan-unpriced (attempt 2): claude claude-sonnet-5-5 failed with 'too long: 333 words', then codex gpt-6-astra: gate pass
+  first attempts: 20 runs, 2.83M tokens, cost $0.88 (20 runs reported one), agent time 10.3 min summed, a tool call named a check file in 6 runs
+  retries: 4 runs, 0.62M tokens, cost $2.01 (4 runs reported one), agent time 4.7 min summed, a tool call named a check file in 1 runs
+  claude claude-fable-5-1 (retry): 1 runs, 0.30M tokens, $1.11
+  claude claude-opus-5-5 (retry): 1 runs, 0.16M tokens, $0.39
+  claude claude-sonnet-5-5: 5 runs, 0.78M tokens, $0.69
+  codex gpt-6-astra (retry): 2 runs, 0.15M tokens, $0.51 (estimate)
+  codex gpt-6-luna: 11 runs, 1.69M tokens, $0.05 (estimate)
+  codex gpt-6.1-sol: 4 runs, 0.35M tokens, $0.15 (estimate)
+routed r2 (20261110-182225-9fc1a5):
+  retry research-eval-expand (attempt 2): codex gpt-6-luna failed with 'answer 1 does not say each cell runs once', then claude claude-opus-5-5: gate pass
+  retry research-gate-timeout (attempt 2): codex gpt-6-luna failed with 'answer 1 does not say 15 minutes', then claude claude-opus-5-5: gate pass
+  first attempts: 20 runs, 3.04M tokens, cost $0.90 (20 runs reported one), agent time 10.3 min summed, a tool call named a check file in 8 runs
+  retries: 2 runs, 0.31M tokens, cost $0.42 (2 runs reported one), agent time 1.0 min summed, a tool call named a check file in 0 runs
+  claude claude-opus-5-5 (retry): 2 runs, 0.31M tokens, $0.42
+  claude claude-sonnet-5-5: 5 runs, 0.99M tokens, $0.67
+  codex gpt-6-luna: 11 runs, 1.65M tokens, $0.04 (estimate)
+  codex gpt-6.1-sol: 4 runs, 0.41M tokens, $0.18 (estimate)
+routed r3 (20261110-182647-c30e69):
+  retry research-gate-timeout (attempt 2): codex gpt-6-luna failed with 'fixtures/real/research/ANSWERS-BATCH.md is missing or empty', then claude claude-opus-5-5: gate FAIL
+  retry research-gate-timeout (attempt 3): claude claude-opus-5-5 failed with 'answer 3 does not say the task wins', then agy model unreported: gate pass
+  retry review-idle-age (attempt 2): codex gpt-6.1-sol failed with 'the review does not find the same negative age at line 31', then claude claude-opus-5-5: gate pass
+  first attempts: 20 runs, 2.79M tokens, cost $0.79 (20 runs reported one), agent time 9.1 min summed, a tool call named a check file in 5 runs
+  retries: 3 runs, 0.37M tokens, cost $0.41 (2 runs reported one), agent time 1.3 min summed, a tool call named a check file in 0 runs
+  agy model unreported (retry): 1 runs, 0.02M tokens, unreported
+  claude claude-opus-5-5 (retry): 2 runs, 0.35M tokens, $0.41
+  claude claude-sonnet-5-5: 5 runs, 0.90M tokens, $0.62
+  codex gpt-6-luna: 11 runs, 1.54M tokens, $0.04 (estimate)
+  codex gpt-6.1-sol: 4 runs, 0.35M tokens, $0.13 (estimate)
+plain r1: 14 tool calls named a check file {'Bash': 4, 'Read': 9, 'PowerShell': 1}; loaded at the start {'tools': 250, 'mcp_servers': 94, 'skills': 279}
+plain r2: 12 tool calls named a check file {'Read': 9, 'Bash': 2, 'PowerShell': 1}; loaded at the start {'tools': 208, 'mcp_servers': 94, 'skills': 279}
+plain r3: 15 tool calls named a check file {'Bash': 2, 'Read': 9, 'PowerShell': 3, 'Write': 1}; loaded at the start {'tools': 281, 'mcp_servers': 94, 'skills': 279}
