@@ -235,6 +235,22 @@ whose text the record holds without its line ends, so those were tried with both
 No cell passed by either route, so no score, cost or routing row on this page changes
 (**measured** by running both sets of gates on the rebuilt files; no agent was run again).
 
+## The ops gates of `4c210`, checked on 2026-11-24
+
+The gates of `ops-ci-workflow` in `routing/purposes` had the same weakness and were tightened on
+2026-11-24: the ones `4c210` used could pass a workflow that names `go vet` and `go test`
+without running both on both runners. What each of the twelve cells on this task wrote was
+rebuilt from its run record. For eleven the record holds the text the agent's file tool wrote;
+`luna-low r1` wrote its file again with a shell command, whose text the record holds without
+its line ends, so that one was tried with both kinds.
+
+- This run's gates, run again on the rebuilt files, pass all twelve, as recorded above.
+- The tightened gates pass all twelve: each is one job on a matrix of `ubuntu-latest` and
+  `windows-latest` with a `run:` step for each command.
+
+No cell passed by that route, so no score, cost or routing row on this page changes
+(**measured** by running both sets of gates on the rebuilt files; no agent was run again).
+
 ## Against the publication gate
 
 This page claims no saving and no quality difference. It records the evals and the table built

@@ -18,12 +18,12 @@ type opsCase struct {
 
 // checkOpsBothWays writes each file where the task expects it and runs the
 // task's gates on it as hrn does.
-func checkOpsBothWays(t *testing.T, id, target string, cases []opsCase) {
+func checkOpsBothWays(t *testing.T, suite, id, target string, cases []opsCase) {
 	bash, found := gateBash()
 	if !found {
 		t.Skip("no bash that hrn would use")
 	}
-	gates := taskGates(t, "routing/real-work.json", id)
+	gates := taskGates(t, suite, id)
 	path := filepath.Join("..", filepath.FromSlash(target))
 	mustBeAbsent(t, path)
 	// Only folders this test makes are removed again.
@@ -101,7 +101,7 @@ const (
 func TestOpsRunnerWorkflowGates(t *testing.T) {
 	linux := workflowJob("linux", "CI_RUNNER", setup+vetAndTest)
 	windows := workflowJob("windows", "CI_RUNNER_WINDOWS", setup+vetAndTest)
-	checkOpsBothWays(t, "ops-runner-workflow", "fixtures/real/ops-runner/.github/workflows/ci.yml", []opsCase{
+	checkOpsBothWays(t, "routing/real-work.json", "ops-runner-workflow", "fixtures/real/ops-runner/.github/workflows/ci.yml", []opsCase{
 		{name: "a run step for each command in both jobs", pass: true, file: workflowHead + linux + "\n" + windows},
 		{name: "the same with CRLF line ends", pass: true, file: strings.ReplaceAll(workflowHead+linux+windows, "\n", "\r\n")},
 		{name: "named steps, a block and a folded run, list items level with steps", pass: true, file: `name: ci
@@ -248,7 +248,7 @@ func TestOpsDockerignoreGates(t *testing.T) {
 		moduleFiles = "*\n!go.mod\n!go.sum\n"
 		allowed     = moduleFiles + "!cmd\n!internal\n"
 	)
-	checkOpsBothWays(t, "ops-dockerignore", "fixtures/real/ops-docker/.dockerignore", []opsCase{
+	checkOpsBothWays(t, "routing/real-work.json", "ops-dockerignore", "fixtures/real/ops-docker/.dockerignore", []opsCase{
 		{name: "the two folders by name", pass: true, file: "# Only what the Dockerfile copies.\n" + allowed},
 		{name: "the same with CRLF line ends", pass: true, file: strings.ReplaceAll(allowed, "\n", "\r\n")},
 		{name: "a byte-order mark before the star", pass: true, file: bom + allowed},
@@ -270,4 +270,309 @@ func TestOpsDockerignoreGates(t *testing.T) {
 		{name: "the module files left out", why: "go.mod is left out of the build context", file: "*\n!cmd\n!internal\n"},
 		{name: "a rule with a backslash", why: `the rule docs\ has a backslash`, file: allowed + "docs\\\n"},
 	})
+}
+
+// hostedJob is one job on a runner named in the workflow; rest is everything
+// after runs-on.
+func hostedJob(name, runner, rest string) string {
+	return "  " + name + ":\n    runs-on: " + runner + "\n" + rest
+}
+
+const (
+	// One job that runs once on each runner the purposes suite's ops task names.
+	matrixJob = `  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+`
+	// What the gates print for a runner that lacks a command, up to the command.
+	onUbuntuLacks  = "no step of a job that runs on ubuntu-latest runs go "
+	onWindowsLacks = "no step of a job that runs on windows-latest runs go "
+)
+
+func TestOpsCIWorkflowGates(t *testing.T) {
+	ubuntu := hostedJob("ubuntu", "ubuntu-latest", setup+vetAndTest)
+	windows := hostedJob("windows", "windows-latest", setup+vetAndTest)
+	cases := []opsCase{
+		{name: "one job on a matrix of both runners", pass: true, file: workflowHead + matrixJob + setup + vetAndTest},
+		{name: "the same with CRLF line ends", pass: true, file: strings.ReplaceAll(workflowHead+matrixJob+setup+vetAndTest, "\n", "\r\n")},
+		{name: "the same after a byte-order mark", pass: true, file: bom + workflowHead + matrixJob + setup + vetAndTest},
+		{name: "one job per runner", pass: true, file: workflowHead + ubuntu + "\n" + windows},
+		{name: "a matrix written as a list, after runs-on, beside Go versions", pass: true, file: `name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        go: ['1.22', '1.23']
+        exclude:
+          - os: windows-latest
+            go: '1.22'
+    steps:
+    - name: Check out
+      uses: actions/checkout@v4
+    - name: Vet and test
+      shell: bash
+      run: |
+        set -euo pipefail
+        go vet ./...
+        go test ./...
+`},
+		{name: "a matrix of include entries", pass: true, file: workflowHead + `  test:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+` + setup + vetAndTest},
+		{name: "a matrix in flow style under another key name", pass: true, file: workflowHead + `  test:
+    strategy: {matrix: {platform: [ubuntu-latest, windows-latest]}}
+    runs-on: ${{ matrix.platform }}
+` + setup + `      - name: go vet and go test
+        run: go vet ./... && go test ./...
+`},
+		{name: "runs-on written as a list", pass: true, file: workflowHead +
+			hostedJob("ubuntu", "[ubuntu-latest]", setup+vetAndTest) +
+			"  windows:\n    runs-on:\n      - windows-latest\n" + setup + vetAndTest},
+		{name: "one job per command and runner", pass: true, file: workflowHead +
+			hostedJob("vet-ubuntu", "ubuntu-latest", setup+"      - run: go vet ./...\n") +
+			hostedJob("test-ubuntu", "ubuntu-latest", setup+"      - run: go test ./...\n") +
+			hostedJob("vet-windows", "windows-latest", setup+"      - run: go vet ./...\n") +
+			hostedJob("test-windows", "windows-latest", setup+"      - run: go test ./...\n")},
+		{name: "one matrix job per command", pass: true, file: workflowHead +
+			strings.Replace(matrixJob, "test:", "vet:", 1) + setup + "      - run: go vet ./...\n" +
+			matrixJob + setup + "      - run: go test ./...\n"},
+		{name: "the list of steps shared through an anchor", pass: true, file: workflowHead +
+			hostedJob("ubuntu", "ubuntu-latest", strings.Replace(setup, "steps:", "steps: &steps", 1)+vetAndTest) +
+			hostedJob("windows", "windows-latest", "    steps: *steps\n")},
+		{name: "single steps shared through anchors", pass: true, file: workflowHead +
+			hostedJob("ubuntu", "ubuntu-latest", setup+`      - &vet
+        run: go vet ./...
+      - &test
+        name: Test
+        run: go test ./...
+`) +
+			hostedJob("windows", "windows-latest", setup+`      - *vet
+      - *test
+`)},
+		{name: "steps in flow style", pass: true, file: workflowHead + matrixJob +
+			"    steps: [{uses: actions/checkout@v4}, {run: go vet ./...}, {run: go test ./...}]\n"},
+		{name: "a condition that holds on every runner", pass: true, file: workflowHead + matrixJob + setup + `      - run: go vet ./...
+        if: ${{ !cancelled() }}
+      - if: always()
+        run: go test ./...
+`},
+		{name: "a step per runner for each command", pass: true, file: workflowHead + matrixJob + setup + `      - name: Vet
+        if: runner.os == 'Linux'
+        run: go vet ./...
+      - name: Vet
+        if: runner.os == 'Windows'
+        run: go vet ./...
+      - name: Test
+        if: matrix.os != 'windows-latest'
+        run: go test ./...
+      - name: Test
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: go test ./...
+`},
+		{name: "anchored steps, one in flow style, with CRLF line ends", pass: true, file: strings.ReplaceAll(workflowHead+
+			hostedJob("ubuntu", "ubuntu-latest", setup+"      - &vet\n        run: go vet ./...\n      - &test {run: go test ./...}\n")+
+			hostedJob("windows", "windows-latest", setup+"      - *vet\n      - *test\n"), "\n", "\r\n")},
+		{name: "a run value shared through an anchor", pass: true, file: workflowHead +
+			hostedJob("ubuntu", "ubuntu-latest", setup+"      - run: &checks go vet ./... && go test ./...\n") +
+			hostedJob("windows", "windows-latest", setup+"      - run: *checks\n")},
+		{name: "a block run value shared through an anchor", pass: true, file: workflowHead +
+			hostedJob("ubuntu", "ubuntu-latest", setup+"      - run: &checks |\n          go vet ./...\n          go test ./...\n") +
+			hostedJob("windows", "windows-latest", setup+"      - name: Checks\n        run: *checks\n")},
+		{name: "a matrix shared through an anchor, read by index", pass: true, file: workflowHead + `  vet:
+    strategy:
+      matrix: &oses {os: [ubuntu-latest, windows-latest]}
+    runs-on: ${{ matrix.os }}
+` + setup + "      - run: go vet ./...\n" + `  test:
+    strategy:
+      matrix: *oses
+    runs-on: ${{ matrix['os'] }}
+` + setup + "      - run: go test ./...\n"},
+		{name: "a folded run value and steps whose dash stands alone", pass: true, file: workflowHead + matrixJob + `    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Vet
+        run: >
+          go vet
+          ./...
+      -
+        run: go test ./...
+`},
+		{name: "a step kept off Windows in brackets, beside one kept to it", pass: true, file: workflowHead + matrixJob + setup + `      - run: go vet ./...
+      - name: Test with the race detector
+        if: ${{ !(runner.os == 'Windows') }}
+        run: go test -race ./...
+      - name: Test
+        if: runner.os == 'Windows'
+        run: go test ./...
+`},
+		{name: "a job condition that names a runner in a variable", pass: true, file: workflowHead + ubuntu +
+			"  windows:\n    if: vars.SKIP_WINDOWS != 'true'\n    runs-on: windows-latest\n" + setup + vetAndTest},
+		{name: "a job condition that names a runner in a commit message", pass: true, file: workflowHead + ubuntu +
+			"  windows:\n    if: ${{ !contains(github.event.head_commit.message, '[skip windows]') }}\n    runs-on: windows-latest\n" + setup + vetAndTest},
+		{name: "a Windows job that never runs beside one that does", pass: true, file: workflowHead + ubuntu +
+			"  windows-off:\n    if: false\n    runs-on: windows-latest\n" + setup + "      - run: go build ./...\n" + windows},
+		{name: "a runner condition beside one about the event", pass: true, file: workflowHead + matrixJob + setup + `      - if: runner.os == 'Linux'
+        run: go vet ./...
+      - if: runner.os == 'Windows' && github.event_name != 'merge_group'
+        run: go vet ./...
+      - run: go test ./...
+`},
+
+		{name: "both commands in the ubuntu job alone", why: onWindowsLacks + "vet", file: workflowHead + ubuntu +
+			hostedJob("windows", "windows-latest", setup+"      - run: go build ./...\n")},
+		{name: "step names carry the commands, no step runs them", why: onUbuntuLacks + "vet", file: workflowHead + matrixJob + setup + namedOnly},
+		{name: "a matrix of both runners that runs-on does not use", why: onWindowsLacks + "vet", file: workflowHead + `  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ubuntu-latest
+` + setup + vetAndTest},
+		{name: "vet is kept to the ubuntu runner", why: onWindowsLacks + "vet", file: workflowHead + matrixJob + setup + `      - run: go vet ./...
+        if: matrix.os == 'ubuntu-latest'
+      - run: go test ./...
+`},
+		{name: "test is kept off the Windows runner", why: onWindowsLacks + "test", file: workflowHead + matrixJob + setup + `      - run: go vet ./...
+      - name: Test
+        if: runner.os != 'Windows'
+        run: go test ./...
+`},
+		{name: "vet is kept off the ubuntu runner, the condition before the command", why: onUbuntuLacks + "vet", file: workflowHead + matrixJob + setup + `      - if: ${{ !startsWith(matrix.os, 'ubuntu') }}
+        run: go vet ./...
+      - run: go test ./...
+`},
+		{name: "vet is kept to one runner by a condition on lines of its own", why: onWindowsLacks + "vet", file: workflowHead + matrixJob + setup + `      - run: go vet ./...
+        if: >-
+          matrix.os ==
+          'ubuntu-latest'
+      - run: go test ./...
+`},
+		{name: "a flow style step kept to the ubuntu runner", why: onWindowsLacks + "vet", file: workflowHead + matrixJob + `    steps:
+      - {uses: actions/checkout@v4}
+      - {run: go vet ./..., if: "matrix.os == 'ubuntu-latest'"}
+      - {run: go test ./...}
+`},
+		{name: "the Windows job only prints the commands", why: onWindowsLacks + "vet", file: workflowHead + ubuntu +
+			hostedJob("windows", "windows-latest", setup+`      - run: echo go vet and go test are not set up yet
+      - run: |
+          echo "go test is skipped on Windows"
+          Write-Host 'go vet later'
+`)},
+		{name: "the Windows job tests and never vets", why: onWindowsLacks + "vet", file: workflowHead + ubuntu +
+			hostedJob("windows", "windows-latest", setup+"      - run: go test ./...\n")},
+		{name: "the matrix job vets, only an ubuntu job tests", why: onWindowsLacks + "test", file: workflowHead +
+			matrixJob + setup + "      - run: go vet ./...\n" +
+			hostedJob("unit", "ubuntu-latest", setup+"      - run: go test ./...\n")},
+		{name: "the commands are an input of an action and an env value", why: onUbuntuLacks + "vet", file: workflowHead + matrixJob + `    steps:
+      - uses: actions/checkout@v4
+      - uses: example/go-action@v1
+        with:
+          run: go vet ./... && go test ./...
+      - name: checks
+        env:
+          CHECKS: go vet ./... && go test ./...
+        run: echo "$CHECKS"
+`},
+		{name: "an anchor shares steps that never vet", why: onUbuntuLacks + "vet", file: workflowHead +
+			hostedJob("ubuntu", "ubuntu-latest", strings.Replace(setup, "steps:", "steps: &steps", 1)+`      - name: go vet
+        run: go build ./...
+      - run: go test ./...
+`) +
+			hostedJob("windows", "windows-latest", "    steps: *steps\n")},
+		{name: "an anchored step kept to the ubuntu runner, used in the Windows job", why: onWindowsLacks + "vet", file: workflowHead +
+			hostedJob("ubuntu", "ubuntu-latest", setup+`      - &vet
+        run: go vet ./...
+        if: runner.os == 'Linux'
+      - run: go test ./...
+`) +
+			hostedJob("windows", "windows-latest", setup+`      - *vet
+      - run: go test ./...
+`)},
+		{name: "vet kept off Windows in brackets", why: onWindowsLacks + "vet", file: workflowHead + matrixJob + setup + `      - if: ${{ !(runner.os == 'Windows') }}
+        run: go vet ./...
+      - run: go test ./...
+`},
+		{name: "vet kept to Windows, beside a condition about the event", why: onUbuntuLacks + "vet", file: workflowHead + matrixJob + setup + `      - if: runner.os == 'Windows' && github.event_name != 'pull_request'
+        run: go vet ./...
+      - run: go test ./...
+`},
+		{name: "a step that never runs", why: onUbuntuLacks + "vet", file: workflowHead + matrixJob + setup + `      - run: go vet ./...
+        if: false
+      - run: go test ./...
+`},
+		{name: "a Windows job that never runs", why: onWindowsLacks + "vet", file: workflowHead + ubuntu +
+			"  windows:\n    if: ${{ false }}\n    runs-on: windows-latest\n" + setup + vetAndTest},
+		{name: "a shared run value that never vets", why: onWindowsLacks + "vet", file: workflowHead + ubuntu +
+			hostedJob("build", "ubuntu-latest", setup+"      - run: &build go build ./...\n") +
+			hostedJob("windows", "windows-latest", setup+"      - name: go vet\n        run: *build\n      - run: go test ./...\n")},
+		{name: "a shared matrix that names one runner", why: onWindowsLacks + "test", file: workflowHead + `  vet:
+    strategy:
+      matrix: &oses {os: [ubuntu-latest]}
+    runs-on: ${{ matrix.os }}
+` + setup + "      - run: go vet ./...\n" + `  test:
+    strategy:
+      matrix: *oses
+    runs-on: ${{ matrix.os }}
+` + setup + "      - run: go test ./...\n" + hostedJob("windows", "windows-latest", setup+"      - run: go vet ./...\n")},
+		{name: "two shared matrices, the test job takes the one without Windows", why: onWindowsLacks + "test", file: workflowHead + `  vet:
+    strategy:
+      matrix: &both {os: [ubuntu-latest, windows-latest]}
+    runs-on: ${{ matrix.os }}
+` + setup + "      - run: go vet ./...\n" + `  lint:
+    strategy:
+      matrix: &linux {os: [ubuntu-latest]}
+    runs-on: ${{ matrix.os }}
+` + setup + "      - run: go build ./...\n" + `  test:
+    strategy:
+      matrix: *linux
+    runs-on: ${{ matrix.os }}
+` + setup + "      - run: go test ./...\n"},
+		{name: "neither command anywhere", why: onUbuntuLacks + "vet", file: workflowHead + matrixJob + setup + "      - run: go build ./...\n"},
+	}
+	// One run value per case, in a step of the matrix job, beside a step that tests.
+	vetStep := func(run string) string {
+		return workflowHead + matrixJob + setup + "      - run: |\n          " + run + "\n      - run: go test ./...\n"
+	}
+	for _, run := range []string{
+		"echo start; go vet ./...",
+		"(go vet ./...)",
+		"{ go vet ./...; }",
+		"true | go vet ./...",
+		"if ! go vet ./...; then exit 1; fi",
+		"time go vet ./...",
+		"exec go vet ./...",
+		"CGO_ENABLED=0 go vet ./...",
+		"env CGO_ENABLED=0 go vet ./...",
+		"GOFLAGS=-mod=readonly timeout 10m go vet ./...",
+		"nice command go vet ./...",
+		`bash -c "go vet ./..."`,
+		"sh -c 'set -e; go vet ./...'",
+	} {
+		cases = append(cases, opsCase{name: "vet runs as " + run, pass: true, file: vetStep(run)})
+	}
+	for _, run := range []string{
+		"echo go vet ./...",
+		`echo "go vet ./..."`,
+		"echo timeout 10m go vet ./...",
+		"Write-Host 'go vet'",
+		"go build ./... && echo env go vet ./...",
+		"mygo vet ./...",
+		"go vetting ./...",
+	} {
+		cases = append(cases, opsCase{name: "vet does not run in " + run, why: onUbuntuLacks + "vet", file: vetStep(run)})
+	}
+	checkOpsBothWays(t, "routing/purposes.json", "ops-ci-workflow", "fixtures/purposes/ops/.github/workflows/ci.yml", cases)
 }
